@@ -1,3 +1,11 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivery Man — ระบบรับออเดอร์ & จัดส่งผัก</title>
+</head>
+<body>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
@@ -43,8 +51,7 @@
 
   /* ===== Clock ===== */
   .clock-corner{
-    margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.12);
-    display:flex; align-items:center; gap:6px;
+    margin-bottom:10px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;
   }
   .clock-corner .c-date{font-size:10.5px; color:#B9CFC0; font-weight:400;}
   .clock-corner .c-time{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; color:#E9C892;}
@@ -215,6 +222,20 @@
   }
   .promo-switch.on{background:var(--gold); color:#fff; border-color:var(--gold);}
 
+  .stock-controls{display:flex; gap:8px; margin-bottom:12px;}
+  .inline-add-form{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    background:var(--surface-2); padding:10px 12px; border-radius:8px; margin-bottom:14px;
+    border:1px dashed var(--line);
+  }
+  .inline-add-form input{max-width:220px;}
+  .veg-name-cell{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .del-veg-btn{
+    background:var(--red-pale); color:var(--red); border:none; border-radius:6px;
+    padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:'Prompt',sans-serif;
+  }
+  .del-veg-btn.confirm{background:var(--red); color:#fff;}
+
   .empty-note{color:var(--ink-muted); font-size:13px; padding:14px; text-align:center;}
 
   /* ===== Summary page ===== */
@@ -289,13 +310,10 @@
     .delivery-layout{grid-template-columns:1fr;}
     .chart-grid{grid-template-columns:1fr;}
     .item-row{grid-template-columns:1fr 1fr;}
-    .clock-corner{position:static; margin-bottom:12px; text-align:left; display:inline-block;}
   }
 </style>
 
 <div class="dm-root">
-  <div class="clock-corner"><div class="c-date" id="clock-date">-</div><div class="c-time" id="clock-time">--:--:--</div></div>
-
   <aside class="sidebar">
     <div class="brand">
       <div class="logo-row">
@@ -311,6 +329,7 @@
       <button class="nav-btn" data-page="delivery"><span class="ic">🗺️</span> จัดส่ง</button>
     </nav>
     <div class="sidebar-footer">
+      <div class="clock-corner"><div class="c-date" id="clock-date">-</div><div class="c-time" id="clock-time">--:--:--</div></div>
       <div class="gps-chip"><span class="dot" id="dm-gps-dot"></span> <span id="dm-gps-label">GPS ยังไม่เปิด</span></div>
     </div>
   </aside>
@@ -424,6 +443,21 @@
       <div id="sub-stock" style="display:none;">
         <div class="panel">
           <h3>📦 ราคา &amp; สต๊อคผักแต่ละชนิด/ขนาด</h3>
+          <div class="stock-controls">
+            <button class="btn btn-ghost btn-sm" id="btn-add-veg">+ เพิ่มชนิดผัก</button>
+            <button class="btn btn-ghost btn-sm" id="btn-add-size">+ เพิ่มขนาดถุง</button>
+          </div>
+          <div class="inline-add-form" id="add-veg-form" style="display:none;">
+            <input type="text" id="new-veg-name" placeholder="ชื่อผักใหม่ เช่น คะน้า">
+            <button class="btn btn-primary btn-sm" id="confirm-add-veg">เพิ่ม</button>
+            <button class="btn btn-ghost btn-sm" id="cancel-add-veg">ยกเลิก</button>
+          </div>
+          <div class="inline-add-form" id="add-size-form" style="display:none;">
+            <input type="number" id="new-size-weight" placeholder="น้ำหนัก เช่น 2" step="0.1" min="0.1" style="max-width:140px;">
+            <span style="font-size:12.5px; color:var(--ink-muted);">กก. (จะสร้างเป็นขนาดถุงใหม่ให้ผักทุกชนิด)</span>
+            <button class="btn btn-primary btn-sm" id="confirm-add-size">เพิ่ม</button>
+            <button class="btn btn-ghost btn-sm" id="cancel-add-size">ยกเลิก</button>
+          </div>
           <table>
             <thead><tr><th>ชนิดผัก</th><th>ขนาดถุง</th><th>ราคา (฿)</th><th>สต๊อคคงเหลือ</th><th>สถานะ</th><th>โปรโมชั่น</th></tr></thead>
             <tbody id="stock-table-body"></tbody>
@@ -500,17 +534,46 @@
   var currentRange = {from: startOfDay(Date.now() - 6*DAY_MS), to: endOfDay(Date.now())};
   var dailyChart = null, pieChart = null;
 
+  // ---------- storage adapter (uses Claude's window.storage when available, else localStorage) ----------
+  var USE_NATIVE_STORAGE = (typeof window.storage !== "undefined" && window.storage && typeof window.storage.get === "function");
+  function storeGet(key){
+    if(USE_NATIVE_STORAGE){
+      return window.storage.get(key, true);
+    }
+    return new Promise(function(resolve, reject){
+      try{
+        var v = localStorage.getItem(key);
+        if(v === null){ reject(new Error("not found")); return; }
+        resolve({key: key, value: v, shared: true});
+      }catch(e){ reject(e); }
+    });
+  }
+  function storeSet(key, value){
+    if(USE_NATIVE_STORAGE){
+      return window.storage.set(key, value, true);
+    }
+    return new Promise(function(resolve, reject){
+      try{
+        localStorage.setItem(key, value);
+        resolve({key: key, value: value, shared: true});
+      }catch(e){ reject(e); }
+    });
+  }
+
   // ---------- storage ----------
   function loadAll(){
     Promise.all([
-      window.storage.get("dm-vegetables", true).catch(function(){ return null; }),
-      window.storage.get("dm-orders", true).catch(function(){ return null; })
+      storeGet("dm-vegetables").catch(function(){ return null; }),
+      storeGet("dm-orders").catch(function(){ return null; }),
+      storeGet("dm-sizes").catch(function(){ return null; })
     ]).then(function(res){
       try{ vegetables = res[0] ? JSON.parse(res[0].value) : JSON.parse(JSON.stringify(DEFAULT_VEGETABLES)); }
       catch(e){ vegetables = JSON.parse(JSON.stringify(DEFAULT_VEGETABLES)); }
       try{ orders = res[1] ? JSON.parse(res[1].value) : []; }
       catch(e){ orders = []; }
-      // migrate old vegetable records that lack promo flag
+      try{ if(res[2]){ var loadedSizes = JSON.parse(res[2].value); if(Array.isArray(loadedSizes) && loadedSizes.length){ SIZE_LIST.length = 0; loadedSizes.forEach(function(s){ SIZE_LIST.push(s); }); } } }
+      catch(e){ /* keep default SIZE_LIST */ }
+      // migrate old vegetable records that lack a promo flag or are missing a size that now exists
       vegetables.forEach(function(v){
         SIZE_LIST.forEach(function(sz){
           if(!v.sizes[sz]) v.sizes[sz] = {price:0,stock:0,promo:false};
@@ -528,10 +591,13 @@
     });
   }
   function saveVegetables(){
-    window.storage.set("dm-vegetables", JSON.stringify(vegetables), true).catch(function(){ toast("บันทึกสต๊อคไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+    storeSet("dm-vegetables", JSON.stringify(vegetables)).catch(function(){ toast("บันทึกสต๊อคไม่สำเร็จ ลองใหม่อีกครั้ง"); });
   }
   function saveOrders(){
-    window.storage.set("dm-orders", JSON.stringify(orders), true).catch(function(){ toast("บันทึกออเดอร์ไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+    storeSet("dm-orders", JSON.stringify(orders)).catch(function(){ toast("บันทึกออเดอร์ไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+  }
+  function saveSizeList(){
+    storeSet("dm-sizes", JSON.stringify(SIZE_LIST)).catch(function(){ toast("บันทึกขนาดถุงไม่สำเร็จ ลองใหม่อีกครั้ง"); });
   }
 
   function afterLoad(){
@@ -664,19 +730,23 @@
     var body = document.getElementById("stock-table-body");
     var rows = [];
     vegetables.forEach(function(v){
-      SIZE_LIST.forEach(function(sz){
+      SIZE_LIST.forEach(function(sz, idx){
+        if(!v.sizes[sz]) v.sizes[sz] = {price:0, stock:0, promo:false};
         var s = v.sizes[sz];
         var cls = s.stock <= 0 ? "stock-out" : (s.stock <= LOW_STOCK_THRESHOLD ? "stock-low" : "");
         var statusLabel = s.stock <= 0 ? "หมดสต๊อค" : (s.stock <= LOW_STOCK_THRESHOLD ? "ใกล้หมด" : "ปกติ");
+        var nameCell = idx === 0
+          ? '<td rowspan="' + SIZE_LIST.length + '"><div class="veg-name-cell"><span>' + esc(v.name) + '</span><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></td>'
+          : "";
         rows.push('<tr class="' + cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
-          '<td>' + esc(v.name) + '</td><td>' + sz + '</td>' +
+          nameCell + '<td>' + sz + '</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
           '<td><input type="number" min="0" step="1" class="stock-input" value="' + s.stock + '"></td>' +
           '<td>' + statusLabel + '</td>' +
           '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td></tr>');
       });
     });
-    body.innerHTML = rows.join("");
+    body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="6"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
     body.querySelectorAll(".price-input").forEach(function(inp){
       inp.addEventListener("change", function(){
         var tr = inp.closest("tr");
@@ -710,7 +780,97 @@
         toast((v.name + " " + btn.dataset.size) + (s.promo ? " เข้าร่วมโปรโมชั่นแล้ว" : " ออกจากโปรโมชั่นแล้ว"));
       });
     });
+    body.querySelectorAll(".del-veg-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(!btn.classList.contains("confirm")){
+          btn.classList.add("confirm");
+          btn.textContent = "ยืนยันลบ?";
+          btn._armTimeout = setTimeout(function(){
+            btn.classList.remove("confirm");
+            btn.textContent = "🗑 ลบ";
+          }, 3000);
+          return;
+        }
+        clearTimeout(btn._armTimeout);
+        deleteVegetable(btn.dataset.veg);
+      });
+    });
   }
+
+  function deleteVegetable(vegId){
+    var v = vegById(vegId);
+    if(!v) return;
+    vegetables = vegetables.filter(function(x){ return x.id !== vegId; });
+    saveVegetables();
+    renderStockTable();
+    rebuildItemRowOptions();
+    renderDashboard();
+    renderSummary();
+    renderCharts();
+    toast('ลบ "' + v.name + '" ออกจากรายการผักแล้ว');
+  }
+
+  function slugify(name){
+    var base = name.trim().toLowerCase().replace(/[^a-z0-9ก-๙]+/g, "-").replace(/(^-|-$)/g, "");
+    return (base || "veg") + "-" + Date.now();
+  }
+
+  document.getElementById("btn-add-veg").addEventListener("click", function(){
+    document.getElementById("add-size-form").style.display = "none";
+    var form = document.getElementById("add-veg-form");
+    form.style.display = form.style.display === "none" ? "flex" : "none";
+    document.getElementById("new-veg-name").focus();
+  });
+  document.getElementById("cancel-add-veg").addEventListener("click", function(){
+    document.getElementById("add-veg-form").style.display = "none";
+    document.getElementById("new-veg-name").value = "";
+  });
+  document.getElementById("confirm-add-veg").addEventListener("click", function(){
+    var name = document.getElementById("new-veg-name").value.trim();
+    if(!name){ toast("กรุณากรอกชื่อผัก"); return; }
+    var sizes = {};
+    SIZE_LIST.forEach(function(sz){ sizes[sz] = {price:0, stock:0, promo:false}; });
+    vegetables.push({id: slugify(name), name: name, sizes: sizes});
+    saveVegetables();
+    document.getElementById("new-veg-name").value = "";
+    document.getElementById("add-veg-form").style.display = "none";
+    renderStockTable();
+    rebuildItemRowOptions();
+    renderDashboard();
+    renderSummary();
+    renderCharts();
+    toast('เพิ่ม "' + name + '" เรียบร้อยแล้ว — อย่าลืมตั้งราคา/สต๊อค');
+  });
+
+  document.getElementById("btn-add-size").addEventListener("click", function(){
+    document.getElementById("add-veg-form").style.display = "none";
+    var form = document.getElementById("add-size-form");
+    form.style.display = form.style.display === "none" ? "flex" : "none";
+    document.getElementById("new-size-weight").focus();
+  });
+  document.getElementById("cancel-add-size").addEventListener("click", function(){
+    document.getElementById("add-size-form").style.display = "none";
+    document.getElementById("new-size-weight").value = "";
+  });
+  document.getElementById("confirm-add-size").addEventListener("click", function(){
+    var w = parseFloat(document.getElementById("new-size-weight").value);
+    if(!w || w <= 0){ toast("กรุณาระบุน้ำหนักถุงให้ถูกต้อง"); return; }
+    var key = (w % 1 === 0 ? String(w) : String(w)) + "kg";
+    if(SIZE_LIST.indexOf(key) !== -1){ toast("มีขนาด " + key + " อยู่แล้ว"); return; }
+    SIZE_LIST.push(key);
+    SIZE_LIST.sort(function(a,b){ return sizeWeight(a) - sizeWeight(b); });
+    vegetables.forEach(function(v){ v.sizes[key] = {price:0, stock:0, promo:false}; });
+    saveVegetables();
+    saveSizeList();
+    document.getElementById("new-size-weight").value = "";
+    document.getElementById("add-size-form").style.display = "none";
+    renderStockTable();
+    rebuildItemRowOptions();
+    renderDashboard();
+    renderSummary();
+    renderCharts();
+    toast("เพิ่มขนาดถุง " + key + " ให้ผักทุกชนิดแล้ว");
+  });
 
   // ---------- order form: item rows ----------
   function resetItemRows(){
@@ -1273,3 +1433,6 @@
   loadAll();
 })();
 </script>
+
+</body>
+</html>
