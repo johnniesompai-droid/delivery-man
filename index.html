@@ -124,6 +124,7 @@
   }
   .panel h3{font-size:15.5px; margin:0 0 14px 0; display:flex; align-items:center; gap:8px;}
   .panel-row{display:grid; grid-template-columns:1.4fr 1fr; gap:18px; align-items:start;}
+  .order-form-stack{display:grid; grid-template-columns:1fr; gap:18px;}
 
   /* ticket-style list item (signature element) */
   .ticket{
@@ -269,7 +270,25 @@
   /* ===== Delivery page ===== */
   .delivery-layout{display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start;}
   #dm-map{width:100%; height:640px; border-radius:var(--radius); box-shadow:var(--shadow); z-index:1;}
+  #dm-map-wrap{position:relative;}
+  #dm-map-wrap.fullscreen{
+    position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000;
+    background:var(--surface); padding:16px; border-radius:0;
+  }
+  #dm-map-wrap.fullscreen #dm-map{height:100%; border-radius:10px;}
   #dm-picker-map{width:100%; height:220px; border-radius:10px; margin-top:6px; z-index:1;}
+  #picker-map-wrap{position:relative;}
+  #picker-map-wrap.fullscreen{
+    position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000;
+    background:var(--surface); padding:16px; border-radius:0;
+  }
+  #picker-map-wrap.fullscreen #dm-picker-map{height:100%; margin-top:0; border-radius:10px;}
+  .map-fullscreen-btn{
+    position:absolute; top:10px; right:10px; z-index:2001;
+    background:var(--surface); color:var(--ink); border:1px solid var(--line);
+    padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer;
+    box-shadow:var(--shadow); font-family:'Prompt',sans-serif;
+  }
   .delivery-list{max-height:640px; overflow-y:auto; padding-right:2px;}
   .del-item{cursor:pointer;}
   .del-item:hover{border-color:var(--green-light);}
@@ -391,7 +410,7 @@
       </div>
 
       <div id="sub-new-order">
-        <div class="panel-row">
+        <div class="order-form-stack">
           <div class="panel">
             <h3>👤 ข้อมูลลูกค้า (ไม่บังคับ)</h3>
             <div class="field">
@@ -412,12 +431,16 @@
               <label>ที่อยู่จัดส่ง</label>
               <textarea id="f-address" rows="2" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"></textarea>
             </div>
-            <div style="display:flex; gap:8px; margin-bottom:4px;">
+            <div style="display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm" id="btn-geocode">🔍 ค้นหาพิกัดจากที่อยู่</button>
               <button class="btn btn-ghost btn-sm" id="btn-use-gps">📍 ใช้ตำแหน่งปัจจุบัน</button>
+              <button class="btn btn-ghost btn-sm" id="btn-expand-picker">⛶ ขยายแผนที่เต็มจอ</button>
             </div>
             <p class="hint">หรือลากหมุดในแผนที่ด้านล่างเพื่อระบุตำแหน่งให้ตรงจริง (ข้ามได้หากยังไม่ทราบพิกัด)</p>
-            <div id="dm-picker-map"></div>
+            <div id="picker-map-wrap">
+              <div id="dm-picker-map"></div>
+              <button class="map-fullscreen-btn" id="btn-shrink-picker" style="display:none;" title="ย่อแผนที่">✕ ปิดแผนที่เต็มจอ</button>
+            </div>
           </div>
 
           <div class="panel">
@@ -484,6 +507,7 @@
       <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
         <button class="btn btn-carrot" id="btn-toggle-gps">🚚 เริ่มติดตาม GPS</button>
         <button class="btn btn-ghost" id="btn-fit-map">🔎 ดูออเดอร์ทั้งหมด</button>
+        <button class="btn btn-ghost" id="btn-expand-map">⛶ ขยายแผนที่เต็มจอ</button>
       </div>
       <div class="filter-tabs" id="filter-tabs">
         <button class="range-btn active" data-filter="all">ทั้งหมด</button>
@@ -494,7 +518,10 @@
       </div>
       <div class="delivery-layout">
         <div class="delivery-list" id="delivery-list"></div>
-        <div id="dm-map"></div>
+        <div id="dm-map-wrap">
+          <div id="dm-map"></div>
+          <button class="map-fullscreen-btn" id="btn-shrink-map" style="display:none;" title="ย่อแผนที่">✕ ปิดแผนที่เต็มจอ</button>
+        </div>
       </div>
     </section>
 
@@ -1027,6 +1054,34 @@
     }, function(){ toast("ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS"); });
   });
 
+  // ---------- picker map fullscreen toggle ----------
+  function setPickerFullscreen(on){
+    var wrap = document.getElementById("picker-map-wrap");
+    var expandBtn = document.getElementById("btn-expand-picker");
+    var shrinkBtn = document.getElementById("btn-shrink-picker");
+    wrap.classList.toggle("fullscreen", on);
+    shrinkBtn.style.display = on ? "block" : "none";
+    expandBtn.style.display = on ? "none" : "inline-flex";
+    document.body.style.overflow = on ? "hidden" : "";
+    setTimeout(function(){ if(pickerMap) pickerMap.invalidateSize(); }, 80);
+  }
+  document.getElementById("btn-expand-picker").addEventListener("click", function(){ setPickerFullscreen(true); });
+  document.getElementById("btn-shrink-picker").addEventListener("click", function(){ setPickerFullscreen(false); });
+
+  // ---------- delivery map fullscreen toggle ----------
+  function setDeliveryMapFullscreen(on){
+    var wrap = document.getElementById("dm-map-wrap");
+    var expandBtn = document.getElementById("btn-expand-map");
+    var shrinkBtn = document.getElementById("btn-shrink-map");
+    wrap.classList.toggle("fullscreen", on);
+    shrinkBtn.style.display = on ? "block" : "none";
+    expandBtn.style.display = on ? "none" : "inline-flex";
+    document.body.style.overflow = on ? "hidden" : "";
+    setTimeout(function(){ if(map) map.invalidateSize(); }, 80);
+  }
+  document.getElementById("btn-expand-map").addEventListener("click", function(){ setDeliveryMapFullscreen(true); });
+  document.getElementById("btn-shrink-map").addEventListener("click", function(){ setDeliveryMapFullscreen(false); });
+
   // ---------- save order ----------
   document.getElementById("btn-save-order").addEventListener("click", function(){
     var name = document.getElementById("f-name").value.trim();
@@ -1124,10 +1179,29 @@
       iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-22]
     });
   }
+  var TRUCK_SVG =
+    '<svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">' +
+      '<ellipse cx="50" cy="46" rx="42" ry="4" fill="rgba(0,0,0,0.30)"/>' +
+      '<rect x="6" y="33" width="88" height="4" fill="#6d0f0f"/>' +
+      '<rect x="6" y="14" width="34" height="22" rx="2" fill="#C62828"/>' +
+      '<rect x="6" y="14" width="34" height="5" rx="2" fill="#EF5350"/>' +
+      '<rect x="40" y="4" width="36" height="32" rx="4" fill="#D32F2F"/>' +
+      '<rect x="40" y="4" width="36" height="5" rx="3" fill="#F4514B"/>' +
+      '<polygon points="44,10 68,10 64,20 48,20" fill="#BFE3F5" stroke="#333" stroke-width="0.6"/>' +
+      '<rect x="48" y="22" width="20" height="9" rx="1" fill="#BFE3F5" fill-opacity="0.85" stroke="#333" stroke-width="0.4"/>' +
+      '<polygon points="76,14 94,20 94,32 76,32" fill="#C62828"/>' +
+      '<polygon points="76,14 94,20 94,23 76,17" fill="#F4514B" fill-opacity="0.9"/>' +
+      '<rect x="92" y="28" width="5" height="8" rx="1" fill="#2b2b2b"/>' +
+      '<circle cx="95.5" cy="24" r="2" fill="#FFF176"/>' +
+      '<circle cx="24" cy="38" r="8.5" fill="#212121"/>' +
+      '<circle cx="24" cy="38" r="3.3" fill="#9e9e9e"/>' +
+      '<circle cx="74" cy="38" r="8.5" fill="#212121"/>' +
+      '<circle cx="74" cy="38" r="3.3" fill="#9e9e9e"/>' +
+    '</svg>';
   var carIcon = L.divIcon({
     className:"",
-    html:'<div style="font-size:26px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">🚚</div>',
-    iconSize:[30,30], iconAnchor:[15,15]
+    html:'<div style="width:52px;height:26px; filter:drop-shadow(0 3px 4px rgba(0,0,0,0.45));">' + TRUCK_SVG + '</div>',
+    iconSize:[52,26], iconAnchor:[26,13]
   });
 
   function popupHtml(o){
