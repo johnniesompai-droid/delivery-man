@@ -1,0 +1,1275 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#EEF2E9;
+    --surface:#FFFFFF;
+    --surface-2:#F5F7F1;
+    --ink:#20261C;
+    --ink-muted:#6C7566;
+    --line:#D9E0D1;
+    --green:#1F4D36;
+    --green-light:#2D6B4A;
+    --green-pale:#DCEAE0;
+    --carrot:#E8722C;
+    --carrot-pale:#FBE3D0;
+    --gold:#C9922E;
+    --gold-pale:#F5E7C8;
+    --red:#B8402E;
+    --red-pale:#F4DBD5;
+    --grey:#8A9284;
+    --grey-pale:#E7EAE3;
+    --radius:14px;
+    --radius-sm:8px;
+    --shadow:0 1px 2px rgba(32,38,28,0.06), 0 8px 24px -12px rgba(32,38,28,0.18);
+  }
+
+  *{box-sizing:border-box;}
+  .dm-root{
+    font-family:'Prompt',sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    min-height:100vh;
+    display:flex;
+    -webkit-font-smoothing:antialiased;
+  }
+  .dm-root h1,.dm-root h2,.dm-root h3,.dm-root .display{
+    font-family:'Prompt',sans-serif;
+    font-weight:600;
+    letter-spacing:-0.005em;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* ===== Clock ===== */
+  .clock-corner{
+    margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.12);
+    display:flex; align-items:center; gap:6px;
+  }
+  .clock-corner .c-date{font-size:10.5px; color:#B9CFC0; font-weight:400;}
+  .clock-corner .c-time{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; color:#E9C892;}
+
+  /* ===== Sidebar ===== */
+  .sidebar{
+    width:230px;
+    flex-shrink:0;
+    background:var(--green);
+    color:#F0F5EE;
+    display:flex;
+    flex-direction:column;
+    padding:22px 16px;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+  .brand{margin-bottom:28px; padding:0 6px;}
+  .brand .logo-row{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+  .brand .logo-mark{
+    width:30px;height:30px;border-radius:8px;background:var(--carrot);
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+  }
+  .brand h1{font-size:19px; font-weight:700; margin:0; color:#fff; line-height:1.1;}
+  .brand .tagline{font-size:11px; color:#B9CFC0; margin:2px 0 0 0; letter-spacing:0.02em; font-weight:400;}
+
+  .dm-nav{display:flex; flex-direction:column; gap:4px;}
+  .nav-btn{
+    display:flex; align-items:center; gap:10px;
+    background:transparent; border:none; color:#CFE0D3;
+    padding:10px 12px; border-radius:var(--radius-sm);
+    font-family:'Prompt',sans-serif; font-size:14px; font-weight:500;
+    cursor:pointer; text-align:left; transition:background .15s, color .15s;
+  }
+  .nav-btn .ic{font-size:16px; width:20px; text-align:center;}
+  .nav-btn:hover{background:rgba(255,255,255,0.08); color:#fff;}
+  .nav-btn.active{background:var(--carrot); color:#fff;}
+
+  .sidebar-footer{margin-top:auto; padding-top:16px; border-top:1px solid rgba(255,255,255,0.12);}
+  .gps-chip{
+    display:flex; align-items:center; gap:8px; font-size:12px; color:#CFE0D3;
+    padding:8px 10px; border-radius:var(--radius-sm); background:rgba(255,255,255,0.06);
+  }
+  .dot{width:8px;height:8px;border-radius:50%; background:#7A8A7A; flex-shrink:0;}
+  .dot.live{background:#6FCF97; box-shadow:0 0 0 3px rgba(111,207,151,0.25);}
+
+  /* ===== Content ===== */
+  .content{flex:1; padding:28px 32px 60px; min-width:0;}
+  .page{display:none;}
+  .page.active{display:block;}
+  .page-head{margin-bottom:22px; padding-right:150px;}
+  .page-head h2{font-size:24px; margin:0 0 4px 0; color:var(--green);}
+  .page-head p{margin:0; color:var(--ink-muted); font-size:13.5px; font-weight:400;}
+
+  /* ===== Cards / stats ===== */
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px;}
+  .stat-card{
+    background:var(--surface); border-radius:var(--radius); padding:16px 18px;
+    box-shadow:var(--shadow); border-left:4px solid var(--carrot); position:relative;
+  }
+  .stat-card .label{font-size:11.5px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.04em; font-weight:600;}
+  .stat-card .value{font-family:'Prompt',sans-serif; font-size:26px; font-weight:700; color:var(--green); margin-top:6px;}
+  .stat-card.alt{border-left-color:var(--green);}
+  .stat-card.warn{border-left-color:var(--gold);}
+  .stat-card.danger{border-left-color:var(--red);}
+
+  .panel{
+    background:var(--surface); border-radius:var(--radius); padding:20px 22px;
+    box-shadow:var(--shadow); margin-bottom:20px;
+  }
+  .panel h3{font-size:15.5px; margin:0 0 14px 0; display:flex; align-items:center; gap:8px;}
+  .panel-row{display:grid; grid-template-columns:1.4fr 1fr; gap:18px; align-items:start;}
+
+  /* ticket-style list item (signature element) */
+  .ticket{
+    display:flex; gap:14px; align-items:flex-start;
+    padding:12px 14px; border-radius:10px; background:var(--surface-2);
+    border:1px dashed var(--line); margin-bottom:8px; position:relative;
+  }
+  .ticket.is-cancelled{opacity:0.55;}
+  .ticket .num{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-muted); width:36px; flex-shrink:0; padding-top:2px;}
+  .ticket .body{flex:1; min-width:0;}
+  .ticket .name{font-weight:600; font-size:13.5px;}
+  .ticket .meta{font-size:12px; color:var(--ink-muted); margin-top:2px;}
+  .ticket .times{font-size:11px; color:var(--ink-muted); margin-top:3px;}
+  .ticket .amount{font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--green); font-size:13.5px; white-space:nowrap;}
+  .badge{display:inline-block; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px; letter-spacing:0.01em;}
+  .badge.pending{background:var(--carrot-pale); color:#A64E15;}
+  .badge.delivered{background:var(--green-pale); color:var(--green);}
+  .badge.paid{background:var(--green-pale); color:var(--green);}
+  .badge.unpaid{background:var(--red-pale); color:var(--red);}
+  .badge.cancelled{background:var(--grey-pale); color:var(--grey);}
+  .badge.promo{background:var(--gold-pale); color:var(--gold);}
+
+  .low-stock-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .low-stock-row:last-child{border-bottom:none;}
+  .low-stock-row .tag{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px;}
+  .tag.out{background:var(--red-pale); color:var(--red);}
+  .tag.low{background:var(--gold-pale); color:var(--gold);}
+
+  /* ===== Forms ===== */
+  label{font-size:12.5px; font-weight:600; color:var(--ink); display:block; margin-bottom:5px;}
+  input[type=text], input[type=tel], input[type=number], input[type=date], textarea, select{
+    width:100%; padding:9px 11px; border-radius:8px; border:1px solid var(--line);
+    background:var(--surface-2); font-family:'Prompt',sans-serif; font-size:13.5px; color:var(--ink);
+    outline:none; transition:border-color .15s;
+  }
+  input:focus, textarea:focus, select:focus{border-color:var(--green-light); background:#fff;}
+  .field{margin-bottom:14px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .hint{font-size:11.5px; color:var(--ink-muted); margin:2px 0 0;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    font-family:'Prompt',sans-serif; font-weight:600; font-size:13.5px;
+    padding:9px 16px; border-radius:8px; border:none; cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--green); color:#fff;}
+  .btn-primary:hover{filter:brightness(1.1);}
+  .btn-carrot{background:var(--carrot); color:#fff;}
+  .btn-carrot:hover{filter:brightness(1.08);}
+  .btn-ghost{background:var(--surface-2); color:var(--ink); border:1px solid var(--line);}
+  .btn-ghost:hover{background:#EAEFE4;}
+  .btn-danger-ghost{background:var(--red-pale); color:var(--red); border:1px solid transparent;}
+  .btn-danger-ghost:hover{filter:brightness(0.97);}
+  .btn-sm{padding:6px 10px; font-size:12px;}
+  .btn-block{width:100%;}
+  .btn:disabled{opacity:0.5; cursor:not-allowed;}
+
+  .promo-toggle-row{
+    display:flex; align-items:center; gap:10px; background:var(--gold-pale);
+    padding:10px 12px; border-radius:8px; margin:10px 0; cursor:pointer;
+  }
+  .promo-toggle-row input{width:auto; accent-color:var(--gold);}
+  .promo-toggle-row span{font-size:12.5px; font-weight:600; color:#8A6314;}
+
+  .item-row{
+    display:grid; grid-template-columns:1.3fr 1fr 0.7fr 0.8fr auto; gap:8px; align-items:end;
+    padding:10px; background:var(--surface-2); border-radius:8px; margin-bottom:8px;
+  }
+  .item-row .sub{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--green); font-weight:600; padding-bottom:9px;}
+  .remove-x{background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:6px;}
+
+  .order-total{padding:12px 14px; background:var(--green-pale); border-radius:8px; margin-top:6px;}
+  .order-total .row{display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:2px 0;}
+  .order-total .row.discount{color:var(--gold); font-weight:600;}
+  .order-total .row.grand .lbl{font-size:13.5px; color:var(--green); font-weight:700;}
+  .order-total .row.grand .val{font-family:'Prompt',sans-serif; font-size:20px; font-weight:700; color:var(--green);}
+
+  .tabs-sub{display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--line); padding-bottom:0;}
+  .tab-sub-btn{
+    background:none; border:none; padding:8px 14px; font-size:13.5px; font-weight:600;
+    color:var(--ink-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:'Prompt',sans-serif;
+  }
+  .tab-sub-btn.active{color:var(--green); border-bottom-color:var(--carrot);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-muted); padding:8px 10px; border-bottom:1px solid var(--line);}
+  td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  td input[type=number]{width:80px; padding:6px 8px; font-size:12.5px;}
+  tr.stock-out{background:var(--red-pale);}
+  tr.stock-low{background:var(--gold-pale);}
+  .promo-switch{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px;
+    font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--line); background:var(--surface);
+  }
+  .promo-switch.on{background:var(--gold); color:#fff; border-color:var(--gold);}
+
+  .empty-note{color:var(--ink-muted); font-size:13px; padding:14px; text-align:center;}
+
+  /* ===== Summary page ===== */
+  .summary-veg-card{background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 20px; margin-bottom:14px;}
+  .summary-veg-card .veg-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .summary-veg-card .veg-head h3{margin:0; font-size:16px;}
+  .summary-veg-card .veg-head .total-kg{font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--green); background:var(--green-pale); padding:4px 12px; border-radius:20px; font-size:13px;}
+  .summary-size-row{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .summary-size-row:last-child{border-bottom:none;}
+  .summary-size-row .l{color:var(--ink-muted);}
+  .summary-size-row .r{font-family:'IBM Plex Mono',monospace; font-weight:600;}
+  .summary-grand{background:var(--green); color:#fff; border-radius:var(--radius); padding:18px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
+  .summary-grand .lbl{font-size:14px; font-weight:600;}
+  .summary-grand .val{font-family:'Prompt',sans-serif; font-size:24px; font-weight:700;}
+
+  /* ===== Chart controls ===== */
+  .range-controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px;}
+  .range-btn{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:'Prompt',sans-serif;}
+  .range-btn.active{background:var(--green); color:#fff; border-color:var(--green);}
+  .range-controls .sep{width:1px; height:20px; background:var(--line); margin:0 4px;}
+  .range-controls input[type=date]{width:auto; padding:6px 10px; font-size:12.5px;}
+  .chart-grid{display:grid; grid-template-columns:1.5fr 1fr; gap:16px; align-items:start;}
+  .chart-box{position:relative; height:280px;}
+  .veg-rank-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .veg-rank-row:last-child{border-bottom:none;}
+  .veg-rank-row .rk{width:22px; height:22px; border-radius:50%; background:var(--green-pale); color:var(--green); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .veg-rank-row .nm{flex:1;}
+  .veg-rank-row .kg{color:var(--ink-muted); font-size:11.5px;}
+  .veg-rank-row .amt{font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--green);}
+
+  /* ===== Delivery page ===== */
+  .delivery-layout{display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start;}
+  #dm-map{width:100%; height:640px; border-radius:var(--radius); box-shadow:var(--shadow); z-index:1;}
+  #dm-picker-map{width:100%; height:220px; border-radius:10px; margin-top:6px; z-index:1;}
+  .delivery-list{max-height:640px; overflow-y:auto; padding-right:2px;}
+  .del-item{cursor:pointer;}
+  .del-item:hover{border-color:var(--green-light);}
+  .filter-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+
+  .popup-card{font-family:'Prompt',sans-serif; min-width:230px;}
+  .popup-card h4{font-family:'Prompt',sans-serif; margin:0 0 4px 0; font-size:15px; color:var(--green); font-weight:700;}
+  .popup-card .pline{font-size:12px; color:var(--ink-muted); margin-bottom:2px;}
+  .popup-card .pitems{margin:8px 0; font-size:12px;}
+  .popup-card .pitems div{display:flex; justify-content:space-between; padding:2px 0;}
+  .popup-card .ptotal{font-weight:700; color:var(--green); border-top:1px dashed var(--line); margin-top:6px; padding-top:6px; display:flex; justify-content:space-between;}
+  .popup-card .pdiscount{color:var(--gold); font-size:11.5px; display:flex; justify-content:space-between; font-weight:600;}
+  .popup-card .pbtns{display:flex; gap:5px; margin-top:10px; flex-wrap:wrap;}
+  .popup-card .pbtns button, .popup-card .pbtns a{flex:1; min-width:60px; font-size:11px; padding:6px 6px; border-radius:6px; border:none; cursor:pointer; font-weight:600; font-family:'Prompt',sans-serif;}
+  .pb-deliver{background:var(--green-pale); color:var(--green);}
+  .pb-paid{background:#D6EEDE; color:#1E7A45;}
+  .pb-unpaid{background:var(--red-pale); color:var(--red);}
+  .pb-cancel{background:var(--grey-pale); color:#555; width:100%;}
+  .pb-call{background:var(--carrot-pale); color:#A64E15; text-decoration:none; text-align:center; display:block;}
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--green); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px;
+    box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:all .25s; z-index:9999;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (max-width: 880px){
+    .dm-root{flex-direction:column;}
+    .sidebar{width:100%; height:auto; position:relative; flex-direction:row; align-items:center; padding:14px 16px;}
+    .brand{margin-bottom:0; flex:1;}
+    .dm-nav{flex-direction:row; flex-wrap:wrap;}
+    .sidebar-footer{display:none;}
+    .content{padding:18px;}
+    .page-head{padding-right:0;}
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .panel-row{grid-template-columns:1fr;}
+    .delivery-layout{grid-template-columns:1fr;}
+    .chart-grid{grid-template-columns:1fr;}
+    .item-row{grid-template-columns:1fr 1fr;}
+    .clock-corner{position:static; margin-bottom:12px; text-align:left; display:inline-block;}
+  }
+</style>
+
+<div class="dm-root">
+  <div class="clock-corner"><div class="c-date" id="clock-date">-</div><div class="c-time" id="clock-time">--:--:--</div></div>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo-row">
+        <div class="logo-mark">🥬</div>
+        <h1>Delivery Man</h1>
+      </div>
+      <p class="tagline">ระบบรับออเดอร์ &amp; จัดส่งผัก</p>
+    </div>
+    <nav class="dm-nav">
+      <button class="nav-btn active" data-page="dashboard"><span class="ic">📊</span> แดชบอร์ด</button>
+      <button class="nav-btn" data-page="orders"><span class="ic">📝</span> รับออเดอร์</button>
+      <button class="nav-btn" data-page="summary"><span class="ic">📦</span> สรุปออเดอร์</button>
+      <button class="nav-btn" data-page="delivery"><span class="ic">🗺️</span> จัดส่ง</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="gps-chip"><span class="dot" id="dm-gps-dot"></span> <span id="dm-gps-label">GPS ยังไม่เปิด</span></div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-head">
+        <h2>แดชบอร์ด</h2>
+        <p>ภาพรวมออเดอร์ ยอดขาย และสต๊อคผักทั้งหมด</p>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">ออเดอร์ทั้งหมด</div><div class="value" id="stat-total-orders">0</div></div>
+        <div class="stat-card alt"><div class="label">ยอดขายรวม</div><div class="value" id="stat-revenue">฿0</div></div>
+        <div class="stat-card warn"><div class="label">รอจัดส่ง</div><div class="value" id="stat-pending">0</div></div>
+        <div class="stat-card danger"><div class="label">ค้างจ่าย</div><div class="value" id="stat-unpaid">฿0</div></div>
+      </div>
+      <div class="panel-row">
+        <div class="panel">
+          <h3>🧾 ออเดอร์ล่าสุด</h3>
+          <div id="recent-orders-list"></div>
+        </div>
+        <div class="panel">
+          <h3>⚠️ สต๊อคใกล้หมด / หมด</h3>
+          <div id="low-stock-list"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>📈 วิเคราะห์ยอดขาย</h3>
+        <div class="range-controls">
+          <button class="range-btn" data-range="today">วันนี้</button>
+          <button class="range-btn active" data-range="7">7 วันล่าสุด</button>
+          <button class="range-btn" data-range="30">30 วันล่าสุด</button>
+          <button class="range-btn" data-range="all">ทั้งหมด</button>
+          <span class="sep"></span>
+          <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="range-from" style="width:150px;">
+          <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="range-to" style="width:150px;">
+        </div>
+        <div class="chart-grid">
+          <div class="chart-box"><canvas id="chart-daily"></canvas></div>
+          <div class="chart-box"><canvas id="chart-pie"></canvas></div>
+        </div>
+        <h3 style="margin-top:20px;">🏆 อันดับผักขายดี (ตามช่วงที่เลือก)</h3>
+        <div id="veg-rank-list"></div>
+      </div>
+    </section>
+
+    <!-- ============ ORDERS ============ -->
+    <section class="page" id="page-orders">
+      <div class="page-head">
+        <h2>รับออเดอร์ผัก</h2>
+        <p>บันทึกออเดอร์ลูกค้าใหม่ หรือจัดการราคา/สต๊อคผัก — กรอกเท่าที่มีข้อมูลได้เลย ไม่จำเป็นต้องครบทุกช่อง</p>
+      </div>
+      <div class="tabs-sub">
+        <button class="tab-sub-btn active" data-sub="new-order">สร้างออเดอร์ใหม่</button>
+        <button class="tab-sub-btn" data-sub="stock">จัดการสต๊อค &amp; ราคา</button>
+      </div>
+
+      <div id="sub-new-order">
+        <div class="panel-row">
+          <div class="panel">
+            <h3>👤 ข้อมูลลูกค้า (ไม่บังคับ)</h3>
+            <div class="field">
+              <label>ชื่อผู้สั่ง</label>
+              <input type="text" id="f-name" placeholder="เช่น คุณสมศรี ใจดี">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>เบอร์โทร</label>
+                <input type="tel" id="f-phone" placeholder="08x-xxx-xxxx">
+              </div>
+              <div class="field">
+                <label>พิกัด (lat, lng)</label>
+                <input type="text" id="f-coords" placeholder="ยังไม่ระบุ" readonly>
+              </div>
+            </div>
+            <div class="field">
+              <label>ที่อยู่จัดส่ง</label>
+              <textarea id="f-address" rows="2" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"></textarea>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:4px;">
+              <button class="btn btn-ghost btn-sm" id="btn-geocode">🔍 ค้นหาพิกัดจากที่อยู่</button>
+              <button class="btn btn-ghost btn-sm" id="btn-use-gps">📍 ใช้ตำแหน่งปัจจุบัน</button>
+            </div>
+            <p class="hint">หรือลากหมุดในแผนที่ด้านล่างเพื่อระบุตำแหน่งให้ตรงจริง (ข้ามได้หากยังไม่ทราบพิกัด)</p>
+            <div id="dm-picker-map"></div>
+          </div>
+
+          <div class="panel">
+            <h3>🥬 รายการผักที่สั่ง</h3>
+            <div id="item-rows"></div>
+            <button class="btn btn-ghost btn-sm" id="btn-add-item" style="margin-top:4px;">+ เพิ่มรายการผัก</button>
+
+            <label class="promo-toggle-row" for="promo-toggle">
+              <input type="checkbox" id="promo-toggle">
+              <span>🔥 ใช้โปรโมชั่น 3 ถุง 100 บาท (คละชนิดผักที่ร่วมโปรได้)</span>
+            </label>
+
+            <div class="order-total" id="order-total-box">
+              <div class="row"><span>ราคาปกติ</span><span class="mono" id="order-subtotal-val">฿0</span></div>
+              <div class="row discount" id="order-discount-row" style="display:none;"><span>ส่วนลดโปรโมชั่น</span><span class="mono" id="order-discount-val">-฿0</span></div>
+              <div class="row grand"><span class="lbl">ยอดรวมทั้งหมด</span><span class="val mono" id="order-total-val">฿0</span></div>
+            </div>
+            <button class="btn btn-primary btn-block" id="btn-save-order" style="margin-top:14px;">✅ บันทึกออเดอร์</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="sub-stock" style="display:none;">
+        <div class="panel">
+          <h3>📦 ราคา &amp; สต๊อคผักแต่ละชนิด/ขนาด</h3>
+          <table>
+            <thead><tr><th>ชนิดผัก</th><th>ขนาดถุง</th><th>ราคา (฿)</th><th>สต๊อคคงเหลือ</th><th>สถานะ</th><th>โปรโมชั่น</th></tr></thead>
+            <tbody id="stock-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SUMMARY ============ -->
+    <section class="page" id="page-summary">
+      <div class="page-head">
+        <h2>สรุปออเดอร์</h2>
+        <p>สรุปจำนวนถุงและน้ำหนักรวมของผักแต่ละชนิด/ขนาด จากออเดอร์ทั้งหมด (ไม่รวมออเดอร์ที่ยกเลิก)</p>
+      </div>
+      <div id="summary-content"></div>
+    </section>
+
+    <!-- ============ DELIVERY ============ -->
+    <section class="page" id="page-delivery">
+      <div class="page-head">
+        <h2>จัดส่งผัก</h2>
+        <p>แผนที่ตำแหน่งลูกค้า และติดตามตำแหน่งรถส่งแบบเรียลไทม์</p>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <button class="btn btn-carrot" id="btn-toggle-gps">🚚 เริ่มติดตาม GPS</button>
+        <button class="btn btn-ghost" id="btn-fit-map">🔎 ดูออเดอร์ทั้งหมด</button>
+      </div>
+      <div class="filter-tabs" id="filter-tabs">
+        <button class="range-btn active" data-filter="all">ทั้งหมด</button>
+        <button class="range-btn" data-filter="pending">รอจัดส่ง</button>
+        <button class="range-btn" data-filter="delivered">ส่งแล้ว</button>
+        <button class="range-btn" data-filter="unpaid">ค้างจ่าย</button>
+        <button class="range-btn" data-filter="cancelled">ยกเลิกแล้ว</button>
+      </div>
+      <div class="delivery-layout">
+        <div class="delivery-list" id="delivery-list"></div>
+        <div id="dm-map"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="dm-toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var CENTER = [18.7883, 98.9853]; // Chiang Mai default
+  var SIZE_LIST = ["0.8kg","1kg","3kg","5kg"];
+  var DEFAULT_VEGETABLES = [
+    {id:"babycos", name:"เบบี้คอส", sizes:{"0.8kg":{price:35,stock:20,promo:true},"1kg":{price:40,stock:20,promo:false},"3kg":{price:110,stock:10,promo:false},"5kg":{price:170,stock:5,promo:false}}},
+    {id:"saladcos", name:"สลัดคอส", sizes:{"0.8kg":{price:30,stock:20,promo:true},"1kg":{price:38,stock:20,promo:false},"3kg":{price:105,stock:10,promo:false},"5kg":{price:165,stock:5,promo:false}}},
+    {id:"phakchi", name:"ผักชี", sizes:{"0.8kg":{price:45,stock:15,promo:false},"1kg":{price:55,stock:15,promo:false},"3kg":{price:150,stock:8,promo:false},"5kg":{price:230,stock:4,promo:false}}},
+    {id:"fillet", name:"ฟิลเลย์", sizes:{"0.8kg":{price:32,stock:20,promo:true},"1kg":{price:40,stock:20,promo:false},"3kg":{price:110,stock:10,promo:false},"5kg":{price:170,stock:5,promo:false}}}
+  ];
+  var LOW_STOCK_THRESHOLD = 5;
+  var NEAR_THRESHOLD_M = 200;
+  var PROMO_BUNDLE_QTY = 3;
+  var PROMO_BUNDLE_PRICE = 100;
+  var DAY_MS = 86400000;
+
+  var vegetables = [];
+  var orders = [];
+  var map, pickerMap, pickerMarker, carMarker, watchId = null;
+  var orderMarkers = {};
+  var notifiedNear = {};
+  var itemRowSeq = 0;
+  var itemRows = []; // {rowId, vegId, size, qty}
+  var deliveryFilter = "all";
+  var currentRange = {from: startOfDay(Date.now() - 6*DAY_MS), to: endOfDay(Date.now())};
+  var dailyChart = null, pieChart = null;
+
+  // ---------- storage ----------
+  function loadAll(){
+    Promise.all([
+      window.storage.get("dm-vegetables", true).catch(function(){ return null; }),
+      window.storage.get("dm-orders", true).catch(function(){ return null; })
+    ]).then(function(res){
+      try{ vegetables = res[0] ? JSON.parse(res[0].value) : JSON.parse(JSON.stringify(DEFAULT_VEGETABLES)); }
+      catch(e){ vegetables = JSON.parse(JSON.stringify(DEFAULT_VEGETABLES)); }
+      try{ orders = res[1] ? JSON.parse(res[1].value) : []; }
+      catch(e){ orders = []; }
+      // migrate old vegetable records that lack promo flag
+      vegetables.forEach(function(v){
+        SIZE_LIST.forEach(function(sz){
+          if(!v.sizes[sz]) v.sizes[sz] = {price:0,stock:0,promo:false};
+          if(typeof v.sizes[sz].promo === "undefined") v.sizes[sz].promo = false;
+        });
+      });
+      // migrate old orders that lack new fields
+      orders.forEach(function(o){
+        if(typeof o.cancelled === "undefined") o.cancelled = false;
+        if(typeof o.deliveredAt === "undefined") o.deliveredAt = null;
+        if(typeof o.discount === "undefined") o.discount = 0;
+        if(typeof o.promoApplied === "undefined") o.promoApplied = false;
+      });
+      afterLoad();
+    });
+  }
+  function saveVegetables(){
+    window.storage.set("dm-vegetables", JSON.stringify(vegetables), true).catch(function(){ toast("บันทึกสต๊อคไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+  }
+  function saveOrders(){
+    window.storage.set("dm-orders", JSON.stringify(orders), true).catch(function(){ toast("บันทึกออเดอร์ไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+  }
+
+  function afterLoad(){
+    renderStockTable();
+    resetItemRows();
+    renderDashboard();
+    renderSummary();
+    renderDeliveryList();
+    initMaps();
+    renderMapMarkers();
+    initRangeInputs();
+    renderCharts();
+  }
+
+  // ---------- helpers ----------
+  function money(n){ return "฿" + Number(n||0).toLocaleString("th-TH", {maximumFractionDigits:0}); }
+  function kg(n){ return Number(n||0).toLocaleString("th-TH", {maximumFractionDigits:2}) + " กก."; }
+  function sizeWeight(sz){ return parseFloat(sz) || 0; }
+  function toast(msg){
+    var t = document.getElementById("dm-toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(function(){ t.classList.remove("show"); }, 2400);
+  }
+  function vegById(id){ return vegetables.filter(function(v){ return v.id === id; })[0]; }
+  function activeOrders(){ return orders.filter(function(o){ return !o.cancelled; }); }
+  function haversine(lat1,lon1,lat2,lon2){
+    var R = 6371000;
+    var dLat = (lat2-lat1) * Math.PI/180;
+    var dLon = (lon2-lon1) * Math.PI/180;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function fmtDateTime(ts){
+    if(!ts) return "-";
+    return new Date(ts).toLocaleString("th-TH", {day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit"});
+  }
+  function startOfDay(ts){ var d = new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
+  function endOfDay(ts){ var d = new Date(ts); d.setHours(23,59,59,999); return d.getTime(); }
+  function esc(s){ var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+
+  // ---------- clock ----------
+  function tickClock(){
+    var now = new Date();
+    document.getElementById("clock-date").textContent = now.toLocaleDateString("th-TH", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+    document.getElementById("clock-time").textContent = now.toLocaleTimeString("th-TH", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // ---------- navigation ----------
+  document.querySelectorAll(".nav-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.remove("active"); });
+      document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById("page-" + btn.dataset.page).classList.add("active");
+      if(btn.dataset.page === "delivery" && map){ setTimeout(function(){ map.invalidateSize(); }, 60); }
+      if(btn.dataset.page === "orders" && pickerMap){ setTimeout(function(){ pickerMap.invalidateSize(); }, 60); }
+      if(btn.dataset.page === "summary"){ renderSummary(); }
+      if(btn.dataset.page === "dashboard"){ renderCharts(); }
+    });
+  });
+  document.querySelectorAll(".tab-sub-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".tab-sub-btn").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      var isNew = btn.dataset.sub === "new-order";
+      document.getElementById("sub-new-order").style.display = isNew ? "block" : "none";
+      document.getElementById("sub-stock").style.display = isNew ? "none" : "block";
+      if(isNew && pickerMap){ setTimeout(function(){ pickerMap.invalidateSize(); }, 60); }
+    });
+  });
+
+  // ---------- dashboard ----------
+  function renderDashboard(){
+    var act = activeOrders();
+    document.getElementById("stat-total-orders").textContent = act.length;
+    var revenue = act.reduce(function(s,o){ return s + o.total; }, 0);
+    document.getElementById("stat-revenue").textContent = money(revenue);
+    var pending = act.filter(function(o){ return o.deliveryStatus !== "delivered"; }).length;
+    document.getElementById("stat-pending").textContent = pending;
+    var unpaidAmt = act.filter(function(o){ return o.paymentStatus === "unpaid"; }).reduce(function(s,o){ return s + o.total; }, 0);
+    document.getElementById("stat-unpaid").textContent = money(unpaidAmt);
+
+    var recentWrap = document.getElementById("recent-orders-list");
+    var recent = orders.slice().sort(function(a,b){ return b.createdAt - a.createdAt; }).slice(0,6);
+    if(recent.length === 0){
+      recentWrap.innerHTML = '<div class="empty-note">ยังไม่มีออเดอร์ — ไปที่หน้า "รับออเดอร์" เพื่อเริ่มต้น</div>';
+    } else {
+      recentWrap.innerHTML = recent.map(function(o){
+        return '<div class="ticket' + (o.cancelled ? " is-cancelled" : "") + '"><div class="num">🥬</div>' +
+          '<div class="body"><div class="name">' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + '</div>' +
+          '<div class="meta">' + itemsSummary(o) + '</div>' +
+          '<div class="times">รับออเดอร์: ' + fmtDateTime(o.createdAt) + (o.deliveredAt ? " · ส่งแล้ว: " + fmtDateTime(o.deliveredAt) : "") + '</div>' +
+          '<div class="meta" style="margin-top:4px;">' + statusBadges(o) + '</div></div>' +
+          '<div class="amount">' + money(o.total) + '</div></div>';
+      }).join("");
+    }
+
+    var lowWrap = document.getElementById("low-stock-list");
+    var lowRows = [];
+    vegetables.forEach(function(v){
+      SIZE_LIST.forEach(function(sz){
+        var s = v.sizes[sz];
+        if(s.stock <= 0){ lowRows.push({veg:v.name, size:sz, stock:s.stock, out:true}); }
+        else if(s.stock <= LOW_STOCK_THRESHOLD){ lowRows.push({veg:v.name, size:sz, stock:s.stock, out:false}); }
+      });
+    });
+    if(lowRows.length === 0){
+      lowWrap.innerHTML = '<div class="empty-note">สต๊อคผักทุกชนิดยังเพียงพอ 👍</div>';
+    } else {
+      lowWrap.innerHTML = lowRows.map(function(r){
+        return '<div class="low-stock-row"><span>' + esc(r.veg) + ' · ' + r.size + '</span>' +
+          '<span class="tag ' + (r.out?"out":"low") + '">' + (r.out ? "หมดสต๊อค" : "เหลือ " + r.stock) + '</span></div>';
+      }).join("");
+    }
+  }
+  function itemsSummary(o){
+    return o.items.map(function(it){ return it.vegName + " " + it.size + " x" + it.qty; }).join(", ");
+  }
+  function statusBadges(o){
+    if(o.cancelled){ return '<span class="badge cancelled">ยกเลิกแล้ว</span>'; }
+    return '<span class="badge ' + (o.deliveryStatus==="delivered"?"delivered":"pending") + '">' + (o.deliveryStatus==="delivered"?"ส่งแล้ว":"รอจัดส่ง") + '</span> ' +
+      '<span class="badge ' + (o.paymentStatus==="paid"?"paid":"unpaid") + '">' + (o.paymentStatus==="paid"?"จ่ายแล้ว":"ค้างจ่าย") + '</span>';
+  }
+
+  // ---------- stock table ----------
+  function renderStockTable(){
+    var body = document.getElementById("stock-table-body");
+    var rows = [];
+    vegetables.forEach(function(v){
+      SIZE_LIST.forEach(function(sz){
+        var s = v.sizes[sz];
+        var cls = s.stock <= 0 ? "stock-out" : (s.stock <= LOW_STOCK_THRESHOLD ? "stock-low" : "");
+        var statusLabel = s.stock <= 0 ? "หมดสต๊อค" : (s.stock <= LOW_STOCK_THRESHOLD ? "ใกล้หมด" : "ปกติ");
+        rows.push('<tr class="' + cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
+          '<td>' + esc(v.name) + '</td><td>' + sz + '</td>' +
+          '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
+          '<td><input type="number" min="0" step="1" class="stock-input" value="' + s.stock + '"></td>' +
+          '<td>' + statusLabel + '</td>' +
+          '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td></tr>');
+      });
+    });
+    body.innerHTML = rows.join("");
+    body.querySelectorAll(".price-input").forEach(function(inp){
+      inp.addEventListener("change", function(){
+        var tr = inp.closest("tr");
+        var v = vegById(tr.dataset.veg);
+        v.sizes[tr.dataset.size].price = Math.max(0, Number(inp.value) || 0);
+        saveVegetables();
+        renderStockTable();
+        renderDashboard();
+        rebuildItemRowOptions();
+      });
+    });
+    body.querySelectorAll(".stock-input").forEach(function(inp){
+      inp.addEventListener("change", function(){
+        var tr = inp.closest("tr");
+        var v = vegById(tr.dataset.veg);
+        v.sizes[tr.dataset.size].stock = Math.max(0, Math.round(Number(inp.value) || 0));
+        saveVegetables();
+        renderStockTable();
+        renderDashboard();
+        rebuildItemRowOptions();
+      });
+    });
+    body.querySelectorAll(".promo-switch").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var v = vegById(btn.dataset.veg);
+        var s = v.sizes[btn.dataset.size];
+        s.promo = !s.promo;
+        saveVegetables();
+        renderStockTable();
+        rebuildItemRowOptions();
+        toast((v.name + " " + btn.dataset.size) + (s.promo ? " เข้าร่วมโปรโมชั่นแล้ว" : " ออกจากโปรโมชั่นแล้ว"));
+      });
+    });
+  }
+
+  // ---------- order form: item rows ----------
+  function resetItemRows(){
+    itemRows = [];
+    addItemRow();
+    renderItemRows();
+  }
+  function addItemRow(){
+    itemRowSeq++;
+    itemRows.push({rowId: itemRowSeq, vegId: vegetables[0] ? vegetables[0].id : "", size: SIZE_LIST[0], qty: "1"});
+  }
+  function renderItemRows(){
+    var wrap = document.getElementById("item-rows");
+    wrap.innerHTML = itemRows.map(function(row){
+      var v = vegById(row.vegId) || vegetables[0];
+      var vegOptions = vegetables.map(function(vv){
+        return '<option value="' + vv.id + '"' + (vv.id===row.vegId?" selected":"") + '>' + esc(vv.name) + '</option>';
+      }).join("");
+      var sizeOptions = SIZE_LIST.map(function(sz){
+        var s = v ? v.sizes[sz] : {stock:0,promo:false};
+        return '<option value="' + sz + '"' + (sz===row.size?" selected":"") + '>' + sz + ' (เหลือ ' + s.stock + ')' + (s.promo ? " 🔥3/100" : "") + '</option>';
+      }).join("");
+      var price = v ? v.sizes[row.size].price : 0;
+      var qtyNum = parseInt(row.qty,10); if(isNaN(qtyNum)) qtyNum = 0;
+      var sub = price * qtyNum;
+      var isPromo = v ? v.sizes[row.size].promo : false;
+      return '<div class="item-row" data-row="' + row.rowId + '">' +
+        '<div><label>ชนิดผัก</label><select class="row-veg">' + vegOptions + '</select></div>' +
+        '<div><label>ขนาด</label><select class="row-size">' + sizeOptions + '</select></div>' +
+        '<div><label>จำนวนถุง</label><input type="number" min="0" step="1" inputmode="numeric" class="row-qty" value="' + row.qty + '"></div>' +
+        '<div class="sub">' + money(sub) + (isPromo ? '<div style="font-size:10px; color:var(--gold); font-weight:600;">🔥 ร่วมโปร</div>' : '') + '</div>' +
+        '<button class="remove-x" title="ลบรายการนี้">✕</button></div>';
+    }).join("");
+
+    wrap.querySelectorAll(".item-row").forEach(function(el){
+      var rowId = Number(el.dataset.row);
+      var row = itemRows.filter(function(r){ return r.rowId === rowId; })[0];
+      el.querySelector(".row-veg").addEventListener("change", function(e){ row.vegId = e.target.value; row.size = SIZE_LIST[0]; renderItemRows(); });
+      el.querySelector(".row-size").addEventListener("change", function(e){ row.size = e.target.value; renderItemRows(); });
+      var qtyInput = el.querySelector(".row-qty");
+      qtyInput.addEventListener("input", function(e){
+        row.qty = e.target.value; // keep raw string while typing, no clamping/re-render
+        updateSubAndTotal();
+      });
+      qtyInput.addEventListener("blur", function(e){
+        var n = parseInt(row.qty,10);
+        if(isNaN(n) || n < 0) n = 0;
+        row.qty = String(n);
+        renderItemRows();
+      });
+      el.querySelector(".remove-x").addEventListener("click", function(){
+        if(itemRows.length === 1) return;
+        itemRows = itemRows.filter(function(r){ return r.rowId !== rowId; });
+        renderItemRows();
+      });
+    });
+    updateOrderTotal();
+  }
+  // lightweight update while typing qty: just refresh the .sub text of the affected row + totals, no full re-render
+  function updateSubAndTotal(){
+    var wrap = document.getElementById("item-rows");
+    itemRows.forEach(function(row){
+      var el = wrap.querySelector('.item-row[data-row="' + row.rowId + '"]');
+      if(!el) return;
+      var v = vegById(row.vegId);
+      var price = v ? v.sizes[row.size].price : 0;
+      var qtyNum = parseInt(row.qty,10); if(isNaN(qtyNum)) qtyNum = 0;
+      var isPromo = v ? v.sizes[row.size].promo : false;
+      var subEl = el.querySelector(".sub");
+      subEl.innerHTML = money(price*qtyNum) + (isPromo ? '<div style="font-size:10px; color:var(--gold); font-weight:600;">🔥 ร่วมโปร</div>' : '');
+    });
+    updateOrderTotal();
+  }
+  function rebuildItemRowOptions(){ renderItemRows(); }
+
+  function computeTotals(rows, promoOn){
+    var items = rows.map(function(row){
+      var v = vegById(row.vegId);
+      var qty = parseInt(row.qty,10); if(isNaN(qty) || qty < 0) qty = 0;
+      var price = v ? v.sizes[row.size].price : 0;
+      var promo = v ? v.sizes[row.size].promo : false;
+      return {vegId: row.vegId, vegName: v ? v.name : "", size: row.size, qty: qty, unitPrice: price, subtotal: price*qty, promo: promo};
+    }).filter(function(it){ return it.qty > 0; });
+
+    var normalTotal = items.reduce(function(s,it){ return s + it.subtotal; }, 0);
+    var total = normalTotal, discount = 0;
+
+    if(promoOn){
+      var units = [];
+      items.forEach(function(it){
+        if(it.promo){ for(var i=0;i<it.qty;i++){ units.push(it.unitPrice); } }
+      });
+      if(units.length > 0){
+        var eligibleNormalSum = units.reduce(function(s,p){ return s+p; }, 0);
+        var groups = Math.floor(units.length / PROMO_BUNDLE_QTY);
+        var remainder = units.length % PROMO_BUNDLE_QTY;
+        var remainderSum = 0;
+        units.sort(function(a,b){ return a-b; });
+        for(var j=0;j<remainder;j++){ remainderSum += units[j]; }
+        var promoTotal = groups * PROMO_BUNDLE_PRICE + remainderSum;
+        total = (normalTotal - eligibleNormalSum) + promoTotal;
+        discount = normalTotal - total;
+      }
+    }
+    return {items: items, normalTotal: normalTotal, total: total, discount: discount};
+  }
+
+  function updateOrderTotal(){
+    var promoOn = document.getElementById("promo-toggle").checked;
+    var res = computeTotals(itemRows, promoOn);
+    document.getElementById("order-subtotal-val").textContent = money(res.normalTotal);
+    var discRow = document.getElementById("order-discount-row");
+    if(res.discount > 0){
+      discRow.style.display = "flex";
+      document.getElementById("order-discount-val").textContent = "-" + money(res.discount);
+    } else {
+      discRow.style.display = "none";
+    }
+    document.getElementById("order-total-val").textContent = money(res.total);
+  }
+  document.getElementById("btn-add-item").addEventListener("click", function(){ addItemRow(); renderItemRows(); });
+  document.getElementById("promo-toggle").addEventListener("change", updateOrderTotal);
+
+  // ---------- geocoding ----------
+  function setCoords(lat, lng){
+    document.getElementById("f-coords").value = lat.toFixed(6) + ", " + lng.toFixed(6);
+    if(pickerMarker){ pickerMarker.setLatLng([lat,lng]); }
+    if(pickerMap){ pickerMap.setView([lat,lng], 15); }
+    pickerMap._selected = {lat:lat, lng:lng};
+  }
+  document.getElementById("btn-geocode").addEventListener("click", function(){
+    var addr = document.getElementById("f-address").value.trim();
+    if(!addr){ toast("กรุณากรอกที่อยู่ก่อนค้นหา"); return; }
+    var btn = document.getElementById("btn-geocode");
+    btn.disabled = true; btn.textContent = "กำลังค้นหา...";
+    fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(addr + ", Thailand"))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(data && data.length > 0){
+          setCoords(parseFloat(data[0].lat), parseFloat(data[0].lon));
+          toast("พบตำแหน่งแล้ว — ลากหมุดปรับให้ตรงได้");
+        } else {
+          toast("หาที่อยู่นี้ไม่พบ ลองลากหมุดในแผนที่แทน");
+        }
+      })
+      .catch(function(){ toast("ค้นหาไม่สำเร็จ กรุณาลากหมุดในแผนที่แทน"); })
+      .finally(function(){ btn.disabled = false; btn.textContent = "🔍 ค้นหาพิกัดจากที่อยู่"; });
+  });
+  document.getElementById("btn-use-gps").addEventListener("click", function(){
+    if(!navigator.geolocation){ toast("อุปกรณ์นี้ไม่รองรับ GPS"); return; }
+    navigator.geolocation.getCurrentPosition(function(pos){
+      setCoords(pos.coords.latitude, pos.coords.longitude);
+      toast("ใช้ตำแหน่งปัจจุบันแล้ว");
+    }, function(){ toast("ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS"); });
+  });
+
+  // ---------- save order ----------
+  document.getElementById("btn-save-order").addEventListener("click", function(){
+    var name = document.getElementById("f-name").value.trim();
+    var phone = document.getElementById("f-phone").value.trim();
+    var address = document.getElementById("f-address").value.trim();
+    var sel = pickerMap ? pickerMap._selected : null;
+    var promoOn = document.getElementById("promo-toggle").checked;
+
+    var res = computeTotals(itemRows, promoOn);
+    if(res.items.length === 0){ toast("กรุณาระบุจำนวนผักอย่างน้อย 1 รายการ"); return; }
+
+    for(var i=0;i<res.items.length;i++){
+      var it = res.items[i];
+      var v = vegById(it.vegId);
+      var stockLeft = v.sizes[it.size].stock;
+      if(it.qty > stockLeft){
+        toast("สต๊อค " + it.vegName + " " + it.size + " เหลือแค่ " + stockLeft + " ถุง");
+        return;
+      }
+    }
+
+    res.items.forEach(function(it){
+      vegById(it.vegId).sizes[it.size].stock -= it.qty;
+    });
+    saveVegetables();
+
+    orders.push({
+      id: "ord_" + Date.now(),
+      customerName: name || "ลูกค้าไม่ระบุชื่อ",
+      phone: phone,
+      address: address,
+      lat: sel ? sel.lat : null,
+      lng: sel ? sel.lng : null,
+      items: res.items,
+      total: res.total,
+      discount: res.discount,
+      promoApplied: promoOn,
+      deliveryStatus: "pending",
+      paymentStatus: "unpaid",
+      cancelled: false,
+      createdAt: Date.now(),
+      deliveredAt: null
+    });
+    saveOrders();
+
+    document.getElementById("f-name").value = "";
+    document.getElementById("f-phone").value = "";
+    document.getElementById("f-address").value = "";
+    document.getElementById("f-coords").value = "";
+    document.getElementById("promo-toggle").checked = false;
+    if(pickerMap) pickerMap._selected = null;
+    resetItemRows();
+    renderStockTable();
+    renderDashboard();
+    renderSummary();
+    renderDeliveryList();
+    renderMapMarkers();
+    renderCharts();
+    toast("บันทึกออเดอร์ของ " + (name || "ลูกค้าไม่ระบุชื่อ") + " เรียบร้อยแล้ว");
+  });
+
+  // ---------- maps ----------
+  function initMaps(){
+    pickerMap = L.map("dm-picker-map", {zoomControl:false}).setView(CENTER, 13);
+    L.control.zoom({position:"bottomright"}).addTo(pickerMap);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19
+    }).addTo(pickerMap);
+    pickerMarker = L.marker(CENTER, {draggable:true}).addTo(pickerMap);
+    pickerMap._selected = null;
+    pickerMarker.on("dragend", function(){
+      var ll = pickerMarker.getLatLng();
+      setCoords(ll.lat, ll.lng);
+    });
+    pickerMap.on("click", function(e){
+      setCoords(e.latlng.lat, e.latlng.lng);
+    });
+
+    map = L.map("dm-map").setView(CENTER, 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19
+    }).addTo(map);
+  }
+
+  function statusColor(o){
+    if(o.cancelled) return "#8A9284";
+    if(o.deliveryStatus === "delivered" && o.paymentStatus === "paid") return "#1F4D36";
+    if(o.paymentStatus === "unpaid" && o.deliveryStatus === "delivered") return "#B8402E";
+    return "#E8722C";
+  }
+  function orderIcon(color){
+    return L.divIcon({
+      className: "",
+      html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:' + color + ';transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+      iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-22]
+    });
+  }
+  var carIcon = L.divIcon({
+    className:"",
+    html:'<div style="font-size:26px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">🚚</div>',
+    iconSize:[30,30], iconAnchor:[15,15]
+  });
+
+  function popupHtml(o){
+    var itemsHtml = o.items.map(function(it){
+      return '<div><span>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</span><span>' + money(it.subtotal) + '</span></div>';
+    }).join("");
+    var telHref = o.phone ? ('tel:' + o.phone.replace(/[^0-9+]/g,"")) : null;
+    var actionButtons = o.cancelled
+      ? '<div class="pbtns"><button class="pb-cancel" disabled>ออเดอร์นี้ถูกยกเลิกแล้ว</button></div>'
+      : '<div class="pbtns">' +
+          (telHref ? '<a class="pb-call" href="' + telHref + '">📞 โทร</a>' : '') +
+          '<button class="pb-deliver" onclick="window.dmSetDelivered(\'' + o.id + '\')">ส่งแล้ว</button>' +
+          '<button class="pb-paid" onclick="window.dmSetPaid(\'' + o.id + '\')">จ่ายแล้ว</button>' +
+          '<button class="pb-unpaid" onclick="window.dmSetUnpaid(\'' + o.id + '\')">ค้างจ่าย</button>' +
+        '</div><div class="pbtns"><button class="pb-cancel" onclick="window.dmCancelOrder(\'' + o.id + '\')">🗑 ยกเลิกออเดอร์</button></div>';
+    return '<div class="popup-card">' +
+      '<h4>' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + '</h4>' +
+      (o.address ? '<div class="pline">📍 ' + esc(o.address) + '</div>' : '') +
+      (o.phone ? '<div class="pline">☎ ' + esc(o.phone) + '</div>' : '') +
+      '<div class="pline">🕐 รับออเดอร์: ' + fmtDateTime(o.createdAt) + '</div>' +
+      (o.deliveredAt ? '<div class="pline">✅ จัดส่ง: ' + fmtDateTime(o.deliveredAt) + '</div>' : '') +
+      '<div class="pitems">' + itemsHtml + '</div>' +
+      (o.discount > 0 ? '<div class="pdiscount"><span>ส่วนลดโปร 3/100</span><span>-' + money(o.discount) + '</span></div>' : '') +
+      '<div class="ptotal"><span>รวม</span><span>' + money(o.total) + '</span></div>' +
+      '<div class="pline" style="margin-top:6px;">' + statusBadges(o) + '</div>' +
+      actionButtons +
+      '</div>';
+  }
+
+  function matchesFilter(o, filter){
+    if(filter === "cancelled") return o.cancelled;
+    if(o.cancelled) return false;
+    if(filter === "pending") return o.deliveryStatus !== "delivered";
+    if(filter === "delivered") return o.deliveryStatus === "delivered";
+    if(filter === "unpaid") return o.paymentStatus === "unpaid";
+    return true; // "all" (excludes cancelled)
+  }
+
+  function renderMapMarkers(){
+    if(!map) return;
+    Object.keys(orderMarkers).forEach(function(id){ map.removeLayer(orderMarkers[id]); });
+    orderMarkers = {};
+    orders.forEach(function(o){
+      if(!matchesFilter(o, deliveryFilter)) return;
+      if(o.lat == null || o.lng == null) return;
+      var mk = L.marker([o.lat, o.lng], {icon: orderIcon(statusColor(o))}).addTo(map);
+      mk.bindPopup(popupHtml(o));
+      orderMarkers[o.id] = mk;
+    });
+  }
+
+  window.dmSetDelivered = function(id){ updateOrderStatus(id, {deliveryStatus:"delivered", deliveredAt: Date.now()}); toast("ทำเครื่องหมายว่าส่งแล้ว"); };
+  window.dmSetPaid = function(id){ updateOrderStatus(id, {paymentStatus:"paid"}); toast("ทำเครื่องหมายว่าจ่ายแล้ว"); };
+  window.dmSetUnpaid = function(id){ updateOrderStatus(id, {paymentStatus:"unpaid"}); toast("ทำเครื่องหมายว่าค้างจ่าย"); };
+  window.dmCancelOrder = function(id){
+    var o = orders.filter(function(x){ return x.id === id; })[0];
+    if(!o || o.cancelled) return;
+    o.items.forEach(function(it){
+      var v = vegById(it.vegId);
+      if(v && v.sizes[it.size]){ v.sizes[it.size].stock += it.qty; }
+    });
+    o.cancelled = true;
+    saveVegetables();
+    saveOrders();
+    renderStockTable();
+    renderDashboard();
+    renderSummary();
+    renderDeliveryList();
+    renderMapMarkers();
+    renderCharts();
+    toast("ยกเลิกออเดอร์ของ " + (o.customerName || "ลูกค้า") + " แล้ว และคืนสต๊อคให้อัตโนมัติ");
+  };
+  function updateOrderStatus(id, patch){
+    var o = orders.filter(function(x){ return x.id === id; })[0];
+    if(!o) return;
+    Object.assign(o, patch);
+    saveOrders();
+    renderDashboard();
+    renderDeliveryList();
+    renderMapMarkers();
+    renderCharts();
+  }
+
+  document.querySelectorAll("#filter-tabs .range-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll("#filter-tabs .range-btn").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      deliveryFilter = btn.dataset.filter;
+      renderDeliveryList();
+      renderMapMarkers();
+    });
+  });
+  document.getElementById("btn-fit-map").addEventListener("click", function(){
+    var visible = orders.filter(function(o){ return matchesFilter(o, deliveryFilter) && o.lat != null && o.lng != null; });
+    if(visible.length === 0){ toast("ไม่มีออเดอร์ที่มีพิกัดตรงกับตัวกรองนี้"); return; }
+    var bounds = L.latLngBounds(visible.map(function(o){ return [o.lat,o.lng]; }));
+    map.fitBounds(bounds, {padding:[40,40]});
+  });
+
+  function renderDeliveryList(){
+    var wrap = document.getElementById("delivery-list");
+    var filtered = orders.filter(function(o){ return matchesFilter(o, deliveryFilter); })
+      .sort(function(a,b){ return b.createdAt - a.createdAt; });
+    if(filtered.length === 0){
+      wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ตรงกับตัวกรองนี้</div>';
+      return;
+    }
+    wrap.innerHTML = filtered.map(function(o){
+      return '<div class="ticket del-item' + (o.cancelled ? " is-cancelled" : "") + '" data-id="' + o.id + '"><div class="num">🥬</div>' +
+        '<div class="body"><div class="name">' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + (o.lat==null ? ' <span style="font-size:10px;color:var(--ink-muted);">(ไม่มีพิกัด)</span>' : '') + '</div>' +
+        '<div class="meta">' + itemsSummary(o) + '</div>' +
+        '<div class="times">รับ: ' + fmtDateTime(o.createdAt) + (o.deliveredAt ? " · ส่ง: " + fmtDateTime(o.deliveredAt) : "") + '</div>' +
+        '<div class="meta" style="margin-top:4px;">' + statusBadges(o) + '</div></div>' +
+        '<div class="amount">' + money(o.total) + '</div></div>';
+    }).join("");
+    wrap.querySelectorAll(".del-item").forEach(function(el){
+      el.addEventListener("click", function(){
+        var id = el.dataset.id;
+        var o = orders.filter(function(x){ return x.id === id; })[0];
+        if(!o || !map) return;
+        if(o.lat == null || o.lng == null){ toast("ออเดอร์นี้ยังไม่มีพิกัด"); return; }
+        map.setView([o.lat, o.lng], 16);
+        var mk = orderMarkers[id];
+        if(mk){ mk.openPopup(); }
+      });
+    });
+  }
+
+  // ---------- GPS tracking ----------
+  document.getElementById("btn-toggle-gps").addEventListener("click", function(){
+    var btn = document.getElementById("btn-toggle-gps");
+    if(watchId === null){
+      if(!navigator.geolocation){ toast("อุปกรณ์นี้ไม่รองรับ GPS"); return; }
+      watchId = navigator.geolocation.watchPosition(onGpsUpdate, onGpsError, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
+      btn.textContent = "⏹ หยุดติดตาม GPS";
+      document.getElementById("dm-gps-dot").classList.add("live");
+      document.getElementById("dm-gps-label").textContent = "กำลังติดตามตำแหน่ง...";
+    } else {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      btn.textContent = "🚚 เริ่มติดตาม GPS";
+      document.getElementById("dm-gps-dot").classList.remove("live");
+      document.getElementById("dm-gps-label").textContent = "GPS ปิดอยู่";
+    }
+  });
+  function onGpsUpdate(pos){
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    document.getElementById("dm-gps-label").textContent = "ตำแหน่งล่าสุด: " + lat.toFixed(5) + ", " + lng.toFixed(5);
+    if(!carMarker){
+      carMarker = L.marker([lat,lng], {icon: carIcon, zIndexOffset: 1000}).addTo(map);
+    } else {
+      carMarker.setLatLng([lat,lng]);
+    }
+    orders.forEach(function(o){
+      if(o.cancelled || o.deliveryStatus === "delivered" || o.lat == null) return;
+      var d = haversine(lat,lng,o.lat,o.lng);
+      if(d <= NEAR_THRESHOLD_M){
+        if(!notifiedNear[o.id]){
+          notifiedNear[o.id] = true;
+          var mk = orderMarkers[o.id];
+          if(mk){ mk.openPopup(); }
+          toast("ใกล้ถึงบ้านคุณ " + (o.customerName || "ลูกค้า") + " แล้ว");
+        }
+      } else {
+        notifiedNear[o.id] = false;
+      }
+    });
+  }
+  function onGpsError(){
+    toast("อ่านตำแหน่ง GPS ไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง");
+  }
+
+  // ---------- summary page ----------
+  function renderSummary(){
+    var wrap = document.getElementById("summary-content");
+    var act = activeOrders();
+    if(act.length === 0){
+      wrap.innerHTML = '<div class="empty-note">ยังไม่มีออเดอร์ให้สรุป</div>';
+      return;
+    }
+    var grandKg = 0;
+    var html = "";
+    vegetables.forEach(function(v){
+      var vegTotalKg = 0;
+      var sizeLines = "";
+      var hasAny = false;
+      SIZE_LIST.forEach(function(sz){
+        var bags = 0;
+        act.forEach(function(o){
+          o.items.forEach(function(it){ if(it.vegId === v.id && it.size === sz){ bags += it.qty; } });
+        });
+        if(bags > 0){
+          hasAny = true;
+          var w = bags * sizeWeight(sz);
+          vegTotalKg += w;
+          sizeLines += '<div class="summary-size-row"><span class="l">' + sz + ' — ' + bags + ' ถุง</span><span class="r">' + kg(w) + '</span></div>';
+        }
+      });
+      if(hasAny){
+        grandKg += vegTotalKg;
+        html += '<div class="summary-veg-card"><div class="veg-head"><h3>' + esc(v.name) + '</h3><span class="total-kg">' + kg(vegTotalKg) + '</span></div>' + sizeLines + '</div>';
+      }
+    });
+    html += '<div class="summary-grand"><span class="lbl">น้ำหนักรวมทุกชนิดผัก</span><span class="val">' + kg(grandKg) + '</span></div>';
+    wrap.innerHTML = html;
+  }
+
+  // ---------- dashboard charts ----------
+  function initRangeInputs(){
+    document.getElementById("range-from").value = toDateInputValue(currentRange.from);
+    document.getElementById("range-to").value = toDateInputValue(currentRange.to);
+    document.querySelectorAll(".range-controls .range-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
+        btn.classList.add("active");
+        var now = Date.now();
+        if(btn.dataset.range === "today"){ currentRange = {from:startOfDay(now), to:endOfDay(now)}; }
+        else if(btn.dataset.range === "7"){ currentRange = {from:startOfDay(now-6*DAY_MS), to:endOfDay(now)}; }
+        else if(btn.dataset.range === "30"){ currentRange = {from:startOfDay(now-29*DAY_MS), to:endOfDay(now)}; }
+        else { var earliest = orders.reduce(function(m,o){ return Math.min(m,o.createdAt); }, now); currentRange = {from:startOfDay(earliest), to:endOfDay(now)}; }
+        document.getElementById("range-from").value = toDateInputValue(currentRange.from);
+        document.getElementById("range-to").value = toDateInputValue(currentRange.to);
+        renderCharts();
+      });
+    });
+    document.getElementById("range-from").addEventListener("change", function(){
+      document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
+      currentRange.from = startOfDay(new Date(this.value).getTime());
+      renderCharts();
+    });
+    document.getElementById("range-to").addEventListener("change", function(){
+      document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
+      currentRange.to = endOfDay(new Date(this.value).getTime());
+      renderCharts();
+    });
+  }
+  function toDateInputValue(ts){
+    var d = new Date(ts);
+    var m = String(d.getMonth()+1).padStart(2,"0");
+    var day = String(d.getDate()).padStart(2,"0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function renderCharts(){
+    if(typeof Chart === "undefined") return;
+    var inRange = activeOrders().filter(function(o){ return o.createdAt >= currentRange.from && o.createdAt <= currentRange.to; });
+
+    // daily totals
+    var dayMap = {};
+    inRange.forEach(function(o){
+      var key = toDateInputValue(o.createdAt);
+      dayMap[key] = (dayMap[key] || 0) + o.total;
+    });
+    var dayKeys = Object.keys(dayMap).sort();
+    var dayLabels = dayKeys.map(function(k){ var d = new Date(k); return d.toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit"}); });
+    var dayValues = dayKeys.map(function(k){ return dayMap[k]; });
+
+    // per-vegetable totals
+    var vegStats = {};
+    vegetables.forEach(function(v){ vegStats[v.id] = {name:v.name, bags:0, kg:0, revenue:0}; });
+    inRange.forEach(function(o){
+      var shareRatio = o.total / (o.normalTotalCache || o.total || 1);
+      o.items.forEach(function(it){
+        if(!vegStats[it.vegId]) return;
+        vegStats[it.vegId].bags += it.qty;
+        vegStats[it.vegId].kg += it.qty * sizeWeight(it.size);
+        vegStats[it.vegId].revenue += it.subtotal; // display uses list-price revenue share (pre-promo) for clarity
+      });
+    });
+    var vegList = Object.keys(vegStats).map(function(id){ return vegStats[id]; }).filter(function(v){ return v.bags > 0; });
+    vegList.sort(function(a,b){ return b.revenue - a.revenue; });
+
+    var palette = ["#1F4D36","#E8722C","#C9922E","#5B8C6E","#B8402E","#8A9284"];
+
+    if(dailyChart) dailyChart.destroy();
+    var ctx1 = document.getElementById("chart-daily").getContext("2d");
+    dailyChart = new Chart(ctx1, {
+      type: "bar",
+      data: { labels: dayLabels.length ? dayLabels : ["ไม่มีข้อมูล"], datasets: [{ label: "ยอดขายรายวัน (฿)", data: dayValues.length ? dayValues : [0], backgroundColor: "#1F4D36", borderRadius: 4 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, title:{display:true, text:"แนวโน้มยอดขายรายวัน", font:{family:"Prompt"}}}, scales:{ y:{beginAtZero:true, ticks:{font:{family:"Prompt"}}}, x:{ticks:{font:{family:"Prompt"}}} } }
+    });
+
+    if(pieChart) pieChart.destroy();
+    var ctx2 = document.getElementById("chart-pie").getContext("2d");
+    pieChart = new Chart(ctx2, {
+      type: "pie",
+      data: { labels: vegList.length ? vegList.map(function(v){return v.name;}) : ["ไม่มีข้อมูล"], datasets: [{ data: vegList.length ? vegList.map(function(v){return v.revenue;}) : [1], backgroundColor: palette }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{font:{family:"Prompt"}}}, title:{display:true, text:"สัดส่วนยอดขายตามชนิดผัก", font:{family:"Prompt"}}} }
+    });
+
+    var rankWrap = document.getElementById("veg-rank-list");
+    if(vegList.length === 0){
+      rankWrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>';
+    } else {
+      rankWrap.innerHTML = vegList.map(function(v, i){
+        return '<div class="veg-rank-row"><div class="rk">' + (i+1) + '</div><div class="nm">' + esc(v.name) + '</div>' +
+          '<div class="kg">' + v.bags + ' ถุง · ' + kg(v.kg) + '</div><div class="amt">' + money(v.revenue) + '</div></div>';
+      }).join("");
+    }
+  }
+
+  // ---------- boot ----------
+  loadAll();
+})();
+</script>
