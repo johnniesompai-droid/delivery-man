@@ -217,11 +217,18 @@
   td input[type=number]{width:80px; padding:6px 8px; font-size:12.5px;}
   tr.stock-out{background:var(--red-pale);}
   tr.stock-low{background:var(--gold-pale);}
+  tr.stock-unknown{background:#EAF2F8;}
   .promo-switch{
     display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px;
     font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--line); background:var(--surface);
   }
   .promo-switch.on{background:var(--gold); color:#fff; border-color:var(--gold);}
+  .unknown-switch{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px;
+    font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--line); background:var(--surface);
+    white-space:nowrap;
+  }
+  .unknown-switch.on{background:#2F6FA8; color:#fff; border-color:#2F6FA8;}
 
   .stock-controls{display:flex; gap:8px; margin-bottom:12px;}
   .inline-add-form{
@@ -236,6 +243,18 @@
     padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:'Prompt',sans-serif;
   }
   .del-veg-btn.confirm{background:var(--red); color:#fff;}
+  .hide-veg-btn, .show-veg-btn{
+    background:var(--surface-2); color:var(--ink-muted); border:1px solid var(--line); border-radius:6px;
+    padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:'Prompt',sans-serif;
+  }
+  .show-veg-btn{background:var(--green-pale); color:var(--green); border-color:transparent;}
+  .veg-hidden-row td{background:var(--surface-2);}
+
+  .edit-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    background:var(--carrot-pale); color:#A64E15; padding:10px 14px; border-radius:8px;
+    margin-bottom:14px; font-size:13px; font-weight:600;
+  }
 
   .empty-note{color:var(--ink-muted); font-size:13px; padding:14px; text-align:center;}
 
@@ -292,6 +311,8 @@
   .delivery-list{max-height:640px; overflow-y:auto; padding-right:2px;}
   .del-item{cursor:pointer;}
   .del-item:hover{border-color:var(--green-light);}
+  .del-item .expand-hint{font-size:9px; color:var(--ink-muted); margin-left:4px;}
+  .del-item.is-expanded{border-style:solid; border-color:var(--green-light);}
   .filter-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
 
   .popup-card{font-family:'Prompt',sans-serif; min-width:230px;}
@@ -301,13 +322,15 @@
   .popup-card .pitems div{display:flex; justify-content:space-between; padding:2px 0;}
   .popup-card .ptotal{font-weight:700; color:var(--green); border-top:1px dashed var(--line); margin-top:6px; padding-top:6px; display:flex; justify-content:space-between;}
   .popup-card .pdiscount{color:var(--gold); font-size:11.5px; display:flex; justify-content:space-between; font-weight:600;}
-  .popup-card .pbtns{display:flex; gap:5px; margin-top:10px; flex-wrap:wrap;}
-  .popup-card .pbtns button, .popup-card .pbtns a{flex:1; min-width:60px; font-size:11px; padding:6px 6px; border-radius:6px; border:none; cursor:pointer; font-weight:600; font-family:'Prompt',sans-serif;}
+  .pbtns{display:flex; gap:5px; margin-top:10px; flex-wrap:wrap;}
+  .pbtns button, .pbtns a{flex:1; min-width:60px; font-size:11px; padding:6px 6px; border-radius:6px; border:none; cursor:pointer; font-weight:600; font-family:'Prompt',sans-serif;}
   .pb-deliver{background:var(--green-pale); color:var(--green);}
   .pb-paid{background:#D6EEDE; color:#1E7A45;}
   .pb-unpaid{background:var(--red-pale); color:var(--red);}
-  .pb-cancel{background:var(--grey-pale); color:#555; width:100%;}
+  .pb-cancel{background:var(--grey-pale); color:#555;}
+  .pb-edit{background:var(--carrot-pale); color:#A64E15;}
   .pb-call{background:var(--carrot-pale); color:#A64E15; text-decoration:none; text-align:center; display:block;}
+  .ticket .pbtns{margin-top:8px;}
 
   .toast{
     position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -410,6 +433,10 @@
       </div>
 
       <div id="sub-new-order">
+        <div class="edit-banner" id="edit-banner" style="display:none;">
+          <span>✏️ กำลังแก้ไขออเดอร์ของ <strong id="edit-banner-name">-</strong></span>
+          <button class="btn btn-ghost btn-sm" id="btn-cancel-edit">ยกเลิกการแก้ไข</button>
+        </div>
         <div class="order-form-stack">
           <div class="panel">
             <h3>👤 ข้อมูลลูกค้า (ไม่บังคับ)</h3>
@@ -482,7 +509,7 @@
             <button class="btn btn-ghost btn-sm" id="cancel-add-size">ยกเลิก</button>
           </div>
           <table>
-            <thead><tr><th>ชนิดผัก</th><th>ขนาดถุง</th><th>ราคา (฿)</th><th>สต๊อคคงเหลือ</th><th>สถานะ</th><th>โปรโมชั่น</th></tr></thead>
+            <thead><tr><th>ชนิดผัก</th><th>ขนาดถุง</th><th>ราคา (฿)</th><th>สต๊อคคงเหลือ</th><th>สถานะ</th><th>โหมดสต๊อค</th><th>โปรโมชั่น</th></tr></thead>
             <tbody id="stock-table-body"></tbody>
           </table>
         </div>
@@ -558,6 +585,7 @@
   var itemRowSeq = 0;
   var itemRows = []; // {rowId, vegId, size, qty}
   var deliveryFilter = "all";
+  var editingOrderId = null;
   var currentRange = {from: startOfDay(Date.now() - 6*DAY_MS), to: endOfDay(Date.now())};
   var dailyChart = null, pieChart = null;
 
@@ -602,9 +630,11 @@
       catch(e){ /* keep default SIZE_LIST */ }
       // migrate old vegetable records that lack a promo flag or are missing a size that now exists
       vegetables.forEach(function(v){
+        if(typeof v.hidden === "undefined") v.hidden = false;
         SIZE_LIST.forEach(function(sz){
-          if(!v.sizes[sz]) v.sizes[sz] = {price:0,stock:0,promo:false};
+          if(!v.sizes[sz]) v.sizes[sz] = {price:0,stock:0,promo:false,unknownStock:false};
           if(typeof v.sizes[sz].promo === "undefined") v.sizes[sz].promo = false;
+          if(typeof v.sizes[sz].unknownStock === "undefined") v.sizes[sz].unknownStock = false;
         });
       });
       // migrate old orders that lack new fields
@@ -651,6 +681,29 @@
   }
   function vegById(id){ return vegetables.filter(function(v){ return v.id === id; })[0]; }
   function activeOrders(){ return orders.filter(function(o){ return !o.cancelled; }); }
+  function totalOrderedBags(vegId, size){
+    var total = 0;
+    activeOrders().forEach(function(o){
+      o.items.forEach(function(it){ if(it.vegId === vegId && it.size === size){ total += it.qty; } });
+    });
+    return total;
+  }
+  function computeStockInfo(v, sz){
+    var s = v.sizes[sz];
+    if(s.unknownStock){
+      var ordered = totalOrderedBags(v.id, sz);
+      if(s.stock <= 0){
+        return {mode:"unknown", ordered:ordered, remaining:null, label:"ยังไม่ทราบสต๊อค (รับแล้ว " + ordered + " ถุง)", cls:"stock-unknown"};
+      }
+      var remaining = s.stock - ordered;
+      if(remaining < 0) return {mode:"shortage", ordered:ordered, remaining:remaining, label:"ขาด " + Math.abs(remaining) + " ถุง", cls:"stock-out"};
+      if(remaining <= LOW_STOCK_THRESHOLD) return {mode:"low", ordered:ordered, remaining:remaining, label:"เหลือ " + remaining + " (ใกล้หมด)", cls:"stock-low"};
+      return {mode:"ok", ordered:ordered, remaining:remaining, label:"เหลือ " + remaining, cls:""};
+    }
+    if(s.stock <= 0) return {mode:"out", remaining:s.stock, label:"หมดสต๊อค", cls:"stock-out"};
+    if(s.stock <= LOW_STOCK_THRESHOLD) return {mode:"low", remaining:s.stock, label:"เหลือ " + s.stock + " (ใกล้หมด)", cls:"stock-low"};
+    return {mode:"ok", remaining:s.stock, label:"เหลือ " + s.stock, cls:""};
+  }
   function haversine(lat1,lon1,lat2,lon2){
     var R = 6371000;
     var dLat = (lat2-lat1) * Math.PI/180;
@@ -728,10 +781,11 @@
     var lowWrap = document.getElementById("low-stock-list");
     var lowRows = [];
     vegetables.forEach(function(v){
+      if(v.hidden) return;
       SIZE_LIST.forEach(function(sz){
-        var s = v.sizes[sz];
-        if(s.stock <= 0){ lowRows.push({veg:v.name, size:sz, stock:s.stock, out:true}); }
-        else if(s.stock <= LOW_STOCK_THRESHOLD){ lowRows.push({veg:v.name, size:sz, stock:s.stock, out:false}); }
+        var info = computeStockInfo(v, sz);
+        if(info.mode === "out" || info.mode === "shortage"){ lowRows.push({veg:v.name, size:sz, label:info.label, out:true}); }
+        else if(info.mode === "low"){ lowRows.push({veg:v.name, size:sz, label:info.label, out:false}); }
       });
     });
     if(lowRows.length === 0){
@@ -739,7 +793,7 @@
     } else {
       lowWrap.innerHTML = lowRows.map(function(r){
         return '<div class="low-stock-row"><span>' + esc(r.veg) + ' · ' + r.size + '</span>' +
-          '<span class="tag ' + (r.out?"out":"low") + '">' + (r.out ? "หมดสต๊อค" : "เหลือ " + r.stock) + '</span></div>';
+          '<span class="tag ' + (r.out?"out":"low") + '">' + r.label + '</span></div>';
       }).join("");
     }
   }
@@ -757,23 +811,29 @@
     var body = document.getElementById("stock-table-body");
     var rows = [];
     vegetables.forEach(function(v){
+      if(v.hidden){
+        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '"><td colspan="7"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
+          '<div style="display:flex; gap:6px;"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
+        return;
+      }
       SIZE_LIST.forEach(function(sz, idx){
-        if(!v.sizes[sz]) v.sizes[sz] = {price:0, stock:0, promo:false};
+        if(!v.sizes[sz]) v.sizes[sz] = {price:0, stock:0, promo:false, unknownStock:false};
         var s = v.sizes[sz];
-        var cls = s.stock <= 0 ? "stock-out" : (s.stock <= LOW_STOCK_THRESHOLD ? "stock-low" : "");
-        var statusLabel = s.stock <= 0 ? "หมดสต๊อค" : (s.stock <= LOW_STOCK_THRESHOLD ? "ใกล้หมด" : "ปกติ");
+        var info = computeStockInfo(v, sz);
         var nameCell = idx === 0
-          ? '<td rowspan="' + SIZE_LIST.length + '"><div class="veg-name-cell"><span>' + esc(v.name) + '</span><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></td>'
+          ? '<td rowspan="' + SIZE_LIST.length + '"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
+            '<div style="display:flex; gap:6px;"><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td>'
           : "";
-        rows.push('<tr class="' + cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
+        rows.push('<tr class="' + info.cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
           nameCell + '<td>' + sz + '</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
-          '<td><input type="number" min="0" step="1" class="stock-input" value="' + s.stock + '"></td>' +
-          '<td>' + statusLabel + '</td>' +
+          '<td><input type="number" min="0" step="1" class="stock-input" value="' + s.stock + '" title="' + (s.unknownStock ? "กรอกจำนวนจริงเมื่อทราบ" : "จำนวนคงเหลือ") + '"></td>' +
+          '<td>' + info.label + '</td>' +
+          '<td><button type="button" class="unknown-switch' + (s.unknownStock ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.unknownStock ? "🕒 ยังไม่ทราบสต๊อค" : "✅ เช็คสต๊อคปกติ") + '</button></td>' +
           '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td></tr>');
       });
     });
-    body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="6"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
+    body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="7"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
     body.querySelectorAll(".price-input").forEach(function(inp){
       inp.addEventListener("change", function(){
         var tr = inp.closest("tr");
@@ -794,6 +854,10 @@
         renderStockTable();
         renderDashboard();
         rebuildItemRowOptions();
+        var info = computeStockInfo(v, tr.dataset.size);
+        if(info.mode === "shortage"){
+          toast("⚠️ " + v.name + " " + tr.dataset.size + " " + info.label + " (สต๊อคที่ทราบไม่พอกับออเดอร์ที่รับไปแล้ว)");
+        }
       });
     });
     body.querySelectorAll(".promo-switch").forEach(function(btn){
@@ -805,6 +869,51 @@
         renderStockTable();
         rebuildItemRowOptions();
         toast((v.name + " " + btn.dataset.size) + (s.promo ? " เข้าร่วมโปรโมชั่นแล้ว" : " ออกจากโปรโมชั่นแล้ว"));
+      });
+    });
+    body.querySelectorAll(".unknown-switch").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var v = vegById(btn.dataset.veg);
+        var s = v.sizes[btn.dataset.size];
+        if(!s.unknownStock){
+          s.unknownStock = true;
+          s.stock = 0;
+          saveVegetables();
+          renderStockTable();
+          renderDashboard();
+          rebuildItemRowOptions();
+          toast((v.name + " " + btn.dataset.size) + ' เปลี่ยนเป็นโหมด "ยังไม่ทราบสต๊อค" แล้ว รับออเดอร์ได้ทันที');
+        } else {
+          var ordered = totalOrderedBags(v.id, btn.dataset.size);
+          var remaining = s.stock - ordered;
+          s.stock = remaining;
+          s.unknownStock = false;
+          saveVegetables();
+          renderStockTable();
+          renderDashboard();
+          rebuildItemRowOptions();
+          toast((v.name + " " + btn.dataset.size) + " กลับสู่โหมดเช็คสต๊อคปกติ — เหลือ " + remaining + " ถุง");
+        }
+      });
+    });
+    body.querySelectorAll(".hide-veg-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var v = vegById(btn.dataset.veg);
+        v.hidden = true;
+        saveVegetables();
+        renderStockTable();
+        rebuildItemRowOptions();
+        toast('ซ่อน "' + v.name + '" แล้ว (ข้อมูลยังอยู่ครบ)');
+      });
+    });
+    body.querySelectorAll(".show-veg-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var v = vegById(btn.dataset.veg);
+        v.hidden = false;
+        saveVegetables();
+        renderStockTable();
+        rebuildItemRowOptions();
+        toast('แสดง "' + v.name + '" อีกครั้งแล้ว');
       });
     });
     body.querySelectorAll(".del-veg-btn").forEach(function(btn){
@@ -856,8 +965,8 @@
     var name = document.getElementById("new-veg-name").value.trim();
     if(!name){ toast("กรุณากรอกชื่อผัก"); return; }
     var sizes = {};
-    SIZE_LIST.forEach(function(sz){ sizes[sz] = {price:0, stock:0, promo:false}; });
-    vegetables.push({id: slugify(name), name: name, sizes: sizes});
+    SIZE_LIST.forEach(function(sz){ sizes[sz] = {price:0, stock:0, promo:false, unknownStock:true}; });
+    vegetables.push({id: slugify(name), name: name, hidden:false, sizes: sizes});
     saveVegetables();
     document.getElementById("new-veg-name").value = "";
     document.getElementById("add-veg-form").style.display = "none";
@@ -866,7 +975,7 @@
     renderDashboard();
     renderSummary();
     renderCharts();
-    toast('เพิ่ม "' + name + '" เรียบร้อยแล้ว — อย่าลืมตั้งราคา/สต๊อค');
+    toast('เพิ่ม "' + name + '" เรียบร้อยแล้ว — รับออเดอร์ได้เลย ยังไม่ต้องระบุสต๊อคก็ได้');
   });
 
   document.getElementById("btn-add-size").addEventListener("click", function(){
@@ -886,7 +995,7 @@
     if(SIZE_LIST.indexOf(key) !== -1){ toast("มีขนาด " + key + " อยู่แล้ว"); return; }
     SIZE_LIST.push(key);
     SIZE_LIST.sort(function(a,b){ return sizeWeight(a) - sizeWeight(b); });
-    vegetables.forEach(function(v){ v.sizes[key] = {price:0, stock:0, promo:false}; });
+    vegetables.forEach(function(v){ v.sizes[key] = {price:0, stock:0, promo:false, unknownStock:true}; });
     saveVegetables();
     saveSizeList();
     document.getElementById("new-size-weight").value = "";
@@ -907,18 +1016,20 @@
   }
   function addItemRow(){
     itemRowSeq++;
-    itemRows.push({rowId: itemRowSeq, vegId: vegetables[0] ? vegetables[0].id : "", size: SIZE_LIST[0], qty: "1"});
+    var firstVisible = vegetables.filter(function(v){ return !v.hidden; })[0];
+    itemRows.push({rowId: itemRowSeq, vegId: firstVisible ? firstVisible.id : "", size: SIZE_LIST[0], qty: "1"});
   }
   function renderItemRows(){
     var wrap = document.getElementById("item-rows");
     wrap.innerHTML = itemRows.map(function(row){
       var v = vegById(row.vegId) || vegetables[0];
-      var vegOptions = vegetables.map(function(vv){
-        return '<option value="' + vv.id + '"' + (vv.id===row.vegId?" selected":"") + '>' + esc(vv.name) + '</option>';
+      var visibleVegs = vegetables.filter(function(vv){ return !vv.hidden || vv.id === row.vegId; });
+      var vegOptions = visibleVegs.map(function(vv){
+        return '<option value="' + vv.id + '"' + (vv.id===row.vegId?" selected":"") + '>' + esc(vv.name) + (vv.hidden ? " (ซ่อนอยู่)" : "") + '</option>';
       }).join("");
       var sizeOptions = SIZE_LIST.map(function(sz){
-        var s = v ? v.sizes[sz] : {stock:0,promo:false};
-        return '<option value="' + sz + '"' + (sz===row.size?" selected":"") + '>' + sz + ' (เหลือ ' + s.stock + ')' + (s.promo ? " 🔥3/100" : "") + '</option>';
+        var info = v ? computeStockInfo(v, sz) : {label:""};
+        return '<option value="' + sz + '"' + (sz===row.size?" selected":"") + '>' + sz + ' — ' + info.label + ((v && v.sizes[sz] && v.sizes[sz].promo) ? " 🔥3/100" : "") + '</option>';
       }).join("");
       var price = v ? v.sizes[row.size].price : 0;
       var qtyNum = parseInt(row.qty,10); if(isNaN(qtyNum)) qtyNum = 0;
@@ -1082,7 +1193,109 @@
   document.getElementById("btn-expand-map").addEventListener("click", function(){ setDeliveryMapFullscreen(true); });
   document.getElementById("btn-shrink-map").addEventListener("click", function(){ setDeliveryMapFullscreen(false); });
 
-  // ---------- save order ----------
+  function computeStockDelta(oldItems, newItems){
+    var map = {};
+    oldItems.forEach(function(it){
+      var k = it.vegId + "|" + it.size;
+      if(!map[k]) map[k] = {vegId: it.vegId, size: it.size, oldQty: 0, newQty: 0};
+      map[k].oldQty += it.qty;
+    });
+    newItems.forEach(function(it){
+      var k = it.vegId + "|" + it.size;
+      if(!map[k]) map[k] = {vegId: it.vegId, size: it.size, oldQty: 0, newQty: 0};
+      map[k].newQty += it.qty;
+    });
+    var shortages = [];
+    Object.keys(map).forEach(function(k){
+      var e = map[k];
+      var v = vegById(e.vegId);
+      if(!v){ e.delta = 0; return; }
+      var s = v.sizes[e.size];
+      if(!s){ e.delta = 0; return; }
+      e.delta = e.newQty - e.oldQty;
+      if(!s.unknownStock && e.delta > 0 && e.delta > s.stock){
+        shortages.push({vegName: v.name, size: e.size, short: e.delta - s.stock});
+      }
+    });
+    return {map: map, shortages: shortages};
+  }
+  function applyStockDelta(map){
+    Object.keys(map).forEach(function(k){
+      var e = map[k];
+      var v = vegById(e.vegId);
+      if(!v) return;
+      var s = v.sizes[e.size];
+      if(!s || s.unknownStock) return;
+      s.stock -= e.delta;
+    });
+  }
+  function clearOrderForm(){
+    document.getElementById("f-name").value = "";
+    document.getElementById("f-phone").value = "";
+    document.getElementById("f-address").value = "";
+    document.getElementById("f-coords").value = "";
+    document.getElementById("promo-toggle").checked = false;
+    if(pickerMap) pickerMap._selected = null;
+    resetItemRows();
+  }
+  function exitEditMode(){
+    editingOrderId = null;
+    document.getElementById("btn-save-order").textContent = "✅ บันทึกออเดอร์";
+    document.getElementById("edit-banner").style.display = "none";
+  }
+  document.getElementById("btn-cancel-edit").addEventListener("click", function(){
+    exitEditMode();
+    clearOrderForm();
+    toast("ยกเลิกการแก้ไขแล้ว");
+  });
+
+  window.dmEditOrder = function(id){
+    var o = orders.filter(function(x){ return x.id === id; })[0];
+    if(!o) return;
+    if(o.cancelled){ toast("ออเดอร์นี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขได้"); return; }
+    editingOrderId = id;
+
+    document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.remove("active"); });
+    document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
+    document.querySelector('.nav-btn[data-page="orders"]').classList.add("active");
+    document.getElementById("page-orders").classList.add("active");
+    document.querySelectorAll(".tab-sub-btn").forEach(function(b){ b.classList.remove("active"); });
+    document.querySelector('.tab-sub-btn[data-sub="new-order"]').classList.add("active");
+    document.getElementById("sub-new-order").style.display = "block";
+    document.getElementById("sub-stock").style.display = "none";
+
+    document.getElementById("f-name").value = (o.customerName === "ลูกค้าไม่ระบุชื่อ") ? "" : (o.customerName || "");
+    document.getElementById("f-phone").value = o.phone || "";
+    document.getElementById("f-address").value = o.address || "";
+    if(o.lat != null && o.lng != null){
+      document.getElementById("f-coords").value = o.lat.toFixed(6) + ", " + o.lng.toFixed(6);
+      if(pickerMap){
+        pickerMap._selected = {lat: o.lat, lng: o.lng};
+        if(pickerMarker) pickerMarker.setLatLng([o.lat, o.lng]);
+        pickerMap.setView([o.lat, o.lng], 15);
+      }
+    } else {
+      document.getElementById("f-coords").value = "";
+      if(pickerMap) pickerMap._selected = null;
+    }
+
+    itemRows = o.items.map(function(it){
+      itemRowSeq++;
+      return {rowId: itemRowSeq, vegId: it.vegId, size: it.size, qty: String(it.qty)};
+    });
+    if(itemRows.length === 0){ addItemRow(); }
+    renderItemRows();
+    document.getElementById("promo-toggle").checked = !!o.promoApplied;
+    updateOrderTotal();
+
+    document.getElementById("btn-save-order").textContent = "💾 บันทึกการแก้ไข";
+    document.getElementById("edit-banner").style.display = "flex";
+    document.getElementById("edit-banner-name").textContent = o.customerName || "ลูกค้าไม่ระบุชื่อ";
+    setTimeout(function(){ if(pickerMap) pickerMap.invalidateSize(); }, 60);
+    toast("กำลังแก้ไขออเดอร์ — แก้ไขแล้วกด \"บันทึกการแก้ไข\"");
+  };
+
+  // ---------- save order (create or edit) ----------
   document.getElementById("btn-save-order").addEventListener("click", function(){
     var name = document.getElementById("f-name").value.trim();
     var phone = document.getElementById("f-phone").value.trim();
@@ -1093,54 +1306,80 @@
     var res = computeTotals(itemRows, promoOn);
     if(res.items.length === 0){ toast("กรุณาระบุจำนวนผักอย่างน้อย 1 รายการ"); return; }
 
-    for(var i=0;i<res.items.length;i++){
-      var it = res.items[i];
-      var v = vegById(it.vegId);
-      var stockLeft = v.sizes[it.size].stock;
-      if(it.qty > stockLeft){
-        toast("สต๊อค " + it.vegName + " " + it.size + " เหลือแค่ " + stockLeft + " ถุง");
-        return;
-      }
+    var existingOrder = null;
+    var oldItems = [];
+    if(editingOrderId){
+      existingOrder = orders.filter(function(x){ return x.id === editingOrderId; })[0];
+      if(existingOrder){ oldItems = existingOrder.items; }
     }
 
-    res.items.forEach(function(it){
-      vegById(it.vegId).sizes[it.size].stock -= it.qty;
-    });
+    var delta = computeStockDelta(oldItems, res.items);
+    if(delta.shortages.length > 0){
+      var msg = delta.shortages.map(function(s){ return s.vegName + " " + s.size + " ขาด " + s.short + " ถุง"; }).join(", ");
+      toast("สต๊อคไม่พอ: " + msg);
+      return;
+    }
+    applyStockDelta(delta.map);
     saveVegetables();
 
-    orders.push({
-      id: "ord_" + Date.now(),
-      customerName: name || "ลูกค้าไม่ระบุชื่อ",
-      phone: phone,
-      address: address,
-      lat: sel ? sel.lat : null,
-      lng: sel ? sel.lng : null,
-      items: res.items,
-      total: res.total,
-      discount: res.discount,
-      promoApplied: promoOn,
-      deliveryStatus: "pending",
-      paymentStatus: "unpaid",
-      cancelled: false,
-      createdAt: Date.now(),
-      deliveredAt: null
-    });
+    var wasEditing = !!existingOrder;
+    if(existingOrder){
+      existingOrder.customerName = name || "ลูกค้าไม่ระบุชื่อ";
+      existingOrder.phone = phone;
+      existingOrder.address = address;
+      existingOrder.lat = sel ? sel.lat : null;
+      existingOrder.lng = sel ? sel.lng : null;
+      existingOrder.items = res.items;
+      existingOrder.total = res.total;
+      existingOrder.discount = res.discount;
+      existingOrder.promoApplied = promoOn;
+    } else {
+      orders.push({
+        id: "ord_" + Date.now(),
+        customerName: name || "ลูกค้าไม่ระบุชื่อ",
+        phone: phone,
+        address: address,
+        lat: sel ? sel.lat : null,
+        lng: sel ? sel.lng : null,
+        items: res.items,
+        total: res.total,
+        discount: res.discount,
+        promoApplied: promoOn,
+        deliveryStatus: "pending",
+        paymentStatus: "unpaid",
+        cancelled: false,
+        createdAt: Date.now(),
+        deliveredAt: null
+      });
+    }
     saveOrders();
 
-    document.getElementById("f-name").value = "";
-    document.getElementById("f-phone").value = "";
-    document.getElementById("f-address").value = "";
-    document.getElementById("f-coords").value = "";
-    document.getElementById("promo-toggle").checked = false;
-    if(pickerMap) pickerMap._selected = null;
-    resetItemRows();
+    // check for shortages on any unknown-stock items that already have a known count entered
+    var shortageNotices = [];
+    res.items.forEach(function(it){
+      var v = vegById(it.vegId);
+      if(!v) return;
+      var s = v.sizes[it.size];
+      if(s && s.unknownStock && s.stock > 0){
+        var info = computeStockInfo(v, it.size);
+        if(info.mode === "shortage"){
+          shortageNotices.push(v.name + " " + it.size + " " + info.label);
+        }
+      }
+    });
+
+    exitEditMode();
+    clearOrderForm();
     renderStockTable();
     renderDashboard();
     renderSummary();
     renderDeliveryList();
     renderMapMarkers();
     renderCharts();
-    toast("บันทึกออเดอร์ของ " + (name || "ลูกค้าไม่ระบุชื่อ") + " เรียบร้อยแล้ว");
+    toast(wasEditing ? "บันทึกการแก้ไขออเดอร์เรียบร้อยแล้ว" : ("บันทึกออเดอร์ของ " + (name || "ลูกค้าไม่ระบุชื่อ") + " เรียบร้อยแล้ว"));
+    if(shortageNotices.length > 0){
+      setTimeout(function(){ toast("⚠️ สต๊อคไม่พอ: " + shortageNotices.join(" | ")); }, 2600);
+    }
   });
 
   // ---------- maps ----------
@@ -1204,19 +1443,26 @@
     iconSize:[52,26], iconAnchor:[26,13]
   });
 
+  function actionButtonsHtml(o){
+    if(o.cancelled){
+      return '<div class="pbtns"><button class="pb-cancel" disabled>ออเดอร์นี้ถูกยกเลิกแล้ว</button></div>';
+    }
+    var telHref = o.phone ? ('tel:' + o.phone.replace(/[^0-9+]/g,"")) : null;
+    return '<div class="pbtns">' +
+        (telHref ? '<a class="pb-call" href="' + telHref + '" onclick="event.stopPropagation()">📞 โทร</a>' : '') +
+        '<button class="pb-deliver" onclick="event.stopPropagation();window.dmSetDelivered(\'' + o.id + '\')">ส่งแล้ว</button>' +
+        '<button class="pb-paid" onclick="event.stopPropagation();window.dmSetPaid(\'' + o.id + '\')">จ่ายแล้ว</button>' +
+        '<button class="pb-unpaid" onclick="event.stopPropagation();window.dmSetUnpaid(\'' + o.id + '\')">ค้างจ่าย</button>' +
+      '</div><div class="pbtns">' +
+        '<button class="pb-edit" onclick="event.stopPropagation();window.dmEditOrder(\'' + o.id + '\')">✏️ แก้ไข</button>' +
+        '<button class="pb-cancel" onclick="event.stopPropagation();window.dmCancelOrder(\'' + o.id + '\')">🗑 ยกเลิกออเดอร์</button>' +
+      '</div>';
+  }
+
   function popupHtml(o){
     var itemsHtml = o.items.map(function(it){
       return '<div><span>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</span><span>' + money(it.subtotal) + '</span></div>';
     }).join("");
-    var telHref = o.phone ? ('tel:' + o.phone.replace(/[^0-9+]/g,"")) : null;
-    var actionButtons = o.cancelled
-      ? '<div class="pbtns"><button class="pb-cancel" disabled>ออเดอร์นี้ถูกยกเลิกแล้ว</button></div>'
-      : '<div class="pbtns">' +
-          (telHref ? '<a class="pb-call" href="' + telHref + '">📞 โทร</a>' : '') +
-          '<button class="pb-deliver" onclick="window.dmSetDelivered(\'' + o.id + '\')">ส่งแล้ว</button>' +
-          '<button class="pb-paid" onclick="window.dmSetPaid(\'' + o.id + '\')">จ่ายแล้ว</button>' +
-          '<button class="pb-unpaid" onclick="window.dmSetUnpaid(\'' + o.id + '\')">ค้างจ่าย</button>' +
-        '</div><div class="pbtns"><button class="pb-cancel" onclick="window.dmCancelOrder(\'' + o.id + '\')">🗑 ยกเลิกออเดอร์</button></div>';
     return '<div class="popup-card">' +
       '<h4>' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + '</h4>' +
       (o.address ? '<div class="pline">📍 ' + esc(o.address) + '</div>' : '') +
@@ -1227,7 +1473,7 @@
       (o.discount > 0 ? '<div class="pdiscount"><span>ส่วนลดโปร 3/100</span><span>-' + money(o.discount) + '</span></div>' : '') +
       '<div class="ptotal"><span>รวม</span><span>' + money(o.total) + '</span></div>' +
       '<div class="pline" style="margin-top:6px;">' + statusBadges(o) + '</div>' +
-      actionButtons +
+      actionButtonsHtml(o) +
       '</div>';
   }
 
@@ -1261,9 +1507,13 @@
     if(!o || o.cancelled) return;
     o.items.forEach(function(it){
       var v = vegById(it.vegId);
-      if(v && v.sizes[it.size]){ v.sizes[it.size].stock += it.qty; }
+      if(v && v.sizes[it.size] && !v.sizes[it.size].unknownStock){ v.sizes[it.size].stock += it.qty; }
     });
     o.cancelled = true;
+    if(editingOrderId === id){
+      exitEditMode();
+      clearOrderForm();
+    }
     saveVegetables();
     saveOrders();
     renderStockTable();
@@ -1272,7 +1522,7 @@
     renderDeliveryList();
     renderMapMarkers();
     renderCharts();
-    toast("ยกเลิกออเดอร์ของ " + (o.customerName || "ลูกค้า") + " แล้ว และคืนสต๊อคให้อัตโนมัติ");
+    toast("ยกเลิกออเดอร์ของ " + (o.customerName || "ลูกค้า") + " แล้ว");
   };
   function updateOrderStatus(id, patch){
     var o = orders.filter(function(x){ return x.id === id; })[0];
@@ -1301,6 +1551,7 @@
     map.fitBounds(bounds, {padding:[40,40]});
   });
 
+  var expandedOrders = {};
   function renderDeliveryList(){
     var wrap = document.getElementById("delivery-list");
     var filtered = orders.filter(function(o){ return matchesFilter(o, deliveryFilter); })
@@ -1310,22 +1561,28 @@
       return;
     }
     wrap.innerHTML = filtered.map(function(o){
-      return '<div class="ticket del-item' + (o.cancelled ? " is-cancelled" : "") + '" data-id="' + o.id + '"><div class="num">🥬</div>' +
-        '<div class="body"><div class="name">' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + (o.lat==null ? ' <span style="font-size:10px;color:var(--ink-muted);">(ไม่มีพิกัด)</span>' : '') + '</div>' +
+      var isOpen = !!expandedOrders[o.id];
+      return '<div class="ticket del-item' + (o.cancelled ? " is-cancelled" : "") + (isOpen ? " is-expanded" : "") + '" data-id="' + o.id + '"><div class="num">🥬</div>' +
+        '<div class="body"><div class="name">' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + (o.lat==null ? ' <span style="font-size:10px;color:var(--ink-muted);">(ไม่มีพิกัด)</span>' : '') + ' <span class="expand-hint">' + (isOpen ? "▲" : "▼") + '</span></div>' +
         '<div class="meta">' + itemsSummary(o) + '</div>' +
         '<div class="times">รับ: ' + fmtDateTime(o.createdAt) + (o.deliveredAt ? " · ส่ง: " + fmtDateTime(o.deliveredAt) : "") + '</div>' +
-        '<div class="meta" style="margin-top:4px;">' + statusBadges(o) + '</div></div>' +
+        '<div class="meta" style="margin-top:4px;">' + statusBadges(o) + '</div>' +
+        (isOpen ? actionButtonsHtml(o) : '') +
+        '</div>' +
         '<div class="amount">' + money(o.total) + '</div></div>';
     }).join("");
     wrap.querySelectorAll(".del-item").forEach(function(el){
       el.addEventListener("click", function(){
         var id = el.dataset.id;
         var o = orders.filter(function(x){ return x.id === id; })[0];
-        if(!o || !map) return;
-        if(o.lat == null || o.lng == null){ toast("ออเดอร์นี้ยังไม่มีพิกัด"); return; }
-        map.setView([o.lat, o.lng], 16);
-        var mk = orderMarkers[id];
-        if(mk){ mk.openPopup(); }
+        if(!o) return;
+        expandedOrders[id] = !expandedOrders[id];
+        renderDeliveryList();
+        if(expandedOrders[id] && map && o.lat != null && o.lng != null){
+          map.setView([o.lat, o.lng], 16);
+          var mk = orderMarkers[id];
+          if(mk){ mk.openPopup(); }
+        }
       });
     });
   }
