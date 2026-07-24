@@ -871,7 +871,7 @@
           : "";
         var stockVal = (s.stock === null || typeof s.stock === "undefined") ? "" : s.stock;
         rows.push('<tr class="' + info.cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
-          nameCell + '<td>' + sz + '</td>' +
+          nameCell + '<td><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
           '<td><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
           '<td>' + info.label + (info.sub ? '<div style="font-size:10.5px; color:var(--ink-muted); font-weight:400;">' + info.sub + '</div>' : '') + '</td>' +
@@ -880,6 +880,27 @@
       });
     });
     body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="7"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
+    body.querySelectorAll(".size-input").forEach(function(inp){
+      inp.addEventListener("change", function(){
+        var oldSize = inp.dataset.size;
+        var v = vegById(inp.dataset.veg);
+        if(!v) return;
+        var w = parseFloat(inp.value);
+        if(!w || w <= 0){
+          toast("กรุณาระบุน้ำหนักถุงให้ถูกต้อง");
+          renderStockTable();
+          return;
+        }
+        var newSize = String(w) + "kg";
+        if(newSize === oldSize) return;
+        if(v.sizes[newSize]){
+          toast(v.name + " มีขนาด " + newSize + " อยู่แล้ว — ลบขนาดเดิมก่อน หรือเลือกน้ำหนักอื่น");
+          renderStockTable();
+          return;
+        }
+        renameVegSize(v, oldSize, newSize);
+      });
+    });
     body.querySelectorAll(".price-input").forEach(function(inp){
       inp.addEventListener("change", function(){
         var tr = inp.closest("tr");
@@ -986,6 +1007,37 @@
     rebuildItemRowOptions();
     renderDashboard();
     toast('ลบขนาด "' + size + '" ของ ' + v.name + ' แล้ว (ออเดอร์เก่ายังอยู่ครบ)');
+  }
+
+  function renameVegSize(v, oldSize, newSize){
+    v.sizes[newSize] = v.sizes[oldSize];
+    delete v.sizes[oldSize];
+
+    // cascade the rename into every order that already used this vegetable + old size
+    var updatedOrders = 0;
+    orders.forEach(function(o){
+      var touched = false;
+      o.items.forEach(function(it){
+        if(it.vegId === v.id && it.size === oldSize){
+          it.size = newSize;
+          touched = true;
+        }
+      });
+      if(touched) updatedOrders++;
+    });
+
+    saveVegetables();
+    saveOrders();
+    renderStockTable();
+    rebuildItemRowOptions();
+    renderDashboard();
+    renderSummary();
+    renderDeliveryList();
+    renderMapMarkers();
+    renderCharts();
+
+    toast('แก้ไขขนาดของ ' + v.name + ' จาก ' + oldSize + ' เป็น ' + newSize + ' แล้ว' +
+      (updatedOrders > 0 ? ' (ปรับออเดอร์เดิม ' + updatedOrders + ' รายการให้ตรงกันด้วย)' : ''));
   }
 
   function deleteVegetable(vegId){
