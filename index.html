@@ -68,7 +68,38 @@
     position:sticky;
     top:0;
     height:100vh;
+    overflow:hidden;
+    transition:width .22s ease, padding .22s ease, opacity .18s ease;
   }
+  .dm-root.sidebar-collapsed .sidebar{
+    width:0;
+    padding-left:0;
+    padding-right:0;
+    opacity:0;
+  }
+  .sidebar-toggle-btn{
+    position:fixed;
+    top:50%;
+    left:230px;
+    transform:translateY(-50%);
+    width:20px;
+    height:46px;
+    background:var(--green);
+    color:#fff;
+    border:none;
+    border-radius:0 8px 8px 0;
+    cursor:pointer;
+    font-size:14px;
+    z-index:600;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:var(--shadow);
+    transition:left .22s ease;
+    padding:0;
+  }
+  .sidebar-toggle-btn:hover{filter:brightness(1.15);}
+  .dm-root.sidebar-collapsed .sidebar-toggle-btn{left:0;}
   .brand{margin-bottom:28px; padding:0 6px;}
   .brand .logo-row{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
   .brand .logo-mark{
@@ -238,7 +269,9 @@
     border:1px dashed var(--line);
   }
   .inline-add-form input{max-width:220px;}
-  .veg-name-cell{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .veg-name-cell{display:flex; flex-direction:column; align-items:flex-start; gap:8px;}
+  .veg-name-cell > span:first-child{font-size:15.5px; font-weight:700; color:var(--ink);}
+  .veg-name-cell .veg-btns{display:flex; gap:6px; flex-wrap:wrap;}
   .del-veg-btn{
     background:var(--red-pale); color:var(--red); border:none; border-radius:6px;
     padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:'Prompt',sans-serif;
@@ -362,6 +395,7 @@
     .delivery-layout{grid-template-columns:1fr;}
     .chart-grid{grid-template-columns:1fr;}
     .item-row{grid-template-columns:1fr 1fr;}
+    .sidebar-toggle-btn{display:none;}
   }
 </style>
 
@@ -385,6 +419,8 @@
       <div class="gps-chip"><span class="dot" id="dm-gps-dot"></span> <span id="dm-gps-label">GPS ยังไม่เปิด</span></div>
     </div>
   </aside>
+
+  <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="ซ่อน/แสดงเมนู">‹</button>
 
   <main class="content">
 
@@ -771,6 +807,18 @@
   tickClock();
   setInterval(tickClock, 1000);
 
+  // ---------- sidebar collapse ----------
+  document.getElementById("sidebar-toggle-btn").addEventListener("click", function(){
+    var root = document.querySelector(".dm-root");
+    var collapsed = root.classList.toggle("sidebar-collapsed");
+    this.textContent = collapsed ? "›" : "‹";
+    this.title = collapsed ? "แสดงเมนู" : "ซ่อนเมนู";
+    setTimeout(function(){
+      if(map) map.invalidateSize();
+      if(pickerMap) pickerMap.invalidateSize();
+    }, 250);
+  });
+
   // ---------- navigation ----------
   document.querySelectorAll(".nav-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
@@ -854,20 +902,20 @@
       var sizeKeys = vegSizeKeys(v);
       if(v.hidden){
         rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '"><td colspan="7"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
-          '<div style="display:flex; gap:6px;"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
+          '<div class="veg-btns"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       if(sizeKeys.length === 0){
         rows.push('<tr data-veg="' + v.id + '"><td colspan="7"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
-          '<div style="display:flex; gap:6px;"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
+          '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       sizeKeys.forEach(function(sz, idx){
         var s = v.sizes[sz];
         var info = computeStockInfo(v, sz);
         var nameCell = idx === 0
-          ? '<td rowspan="' + sizeKeys.length + '"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
-            '<div style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td>'
+          ? '<td rowspan="' + sizeKeys.length + '" style="max-width:150px;"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
+            '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td>'
           : "";
         var stockVal = (s.stock === null || typeof s.stock === "undefined") ? "" : s.stock;
         rows.push('<tr class="' + info.cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
