@@ -306,10 +306,15 @@
   .summary-veg-card .veg-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
   .summary-veg-card .veg-head h3{margin:0; font-size:16px;}
   .summary-veg-card .veg-head .total-kg{font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--green); background:var(--green-pale); padding:4px 12px; border-radius:20px; font-size:13px;}
-  .summary-size-row{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .summary-size-row{display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:center; padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px;}
   .summary-size-row:last-child{border-bottom:none;}
   .summary-size-row .l{color:var(--ink-muted);}
   .summary-size-row .r{font-family:'IBM Plex Mono',monospace; font-weight:600;}
+  .summary-size-row .diff{font-family:'IBM Plex Mono',monospace; font-weight:700; min-width:34px; text-align:right;}
+  .summary-size-row .diff.short{color:var(--red);}
+  .summary-size-row .diff.zero{color:var(--ink-muted);}
+  .summary-size-row .diff.ok{color:var(--green);}
+  .summary-size-row .diff.none{color:var(--ink-muted); opacity:.4;}
   .summary-grand{background:var(--green); color:#fff; border-radius:var(--radius); padding:18px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
   .summary-grand .lbl{font-size:14px; font-weight:600;}
   .summary-grand .val{font-family:'Prompt',sans-serif; font-size:24px; font-weight:700;}
@@ -352,6 +357,20 @@
     box-shadow:var(--shadow); font-family:'Prompt',sans-serif;
   }
   .delivery-list{max-height:640px; overflow-y:auto; padding-right:2px;}
+  .delivery-list-wrap{position:relative;}
+  .scroll-track{
+    position:absolute; top:4px; bottom:4px; right:2px; width:4px;
+    background:var(--line); border-radius:4px; overflow:hidden; z-index:5;
+  }
+  .scroll-thumb{
+    position:absolute; left:0; width:100%; background:var(--green);
+    border-radius:4px; opacity:0.55;
+  }
+  .items-lines{margin-top:2px;}
+  .items-lines div{font-size:12px; color:var(--ink-muted); line-height:1.55;}
+  .ticket .phone-line{margin-top:4px;}
+  .ticket .phone-line a{color:var(--carrot); font-weight:600; font-size:12.5px; text-decoration:none;}
+  .ticket .phone-line a:hover{text-decoration:underline;}
   .del-item{cursor:pointer;}
   .del-item:hover{border-color:var(--green-light);}
   .del-item .expand-hint{font-size:9px; color:var(--ink-muted); margin-left:4px;}
@@ -591,7 +610,10 @@
         <button class="range-btn" data-filter="cancelled">ยกเลิกแล้ว</button>
       </div>
       <div class="delivery-layout">
-        <div class="delivery-list" id="delivery-list"></div>
+        <div class="delivery-list-wrap">
+          <div class="delivery-list" id="delivery-list"></div>
+          <div class="scroll-track" id="scroll-track"><div class="scroll-thumb" id="scroll-thumb"></div></div>
+        </div>
         <div id="dm-map-wrap">
           <div id="dm-map"></div>
           <button class="map-fullscreen-btn" id="btn-shrink-map" style="display:none;" title="ย่อแผนที่">✕ ปิดแผนที่เต็มจอ</button>
@@ -610,7 +632,7 @@
 (function(){
   "use strict";
 
-  var CENTER = [18.7883, 98.9853]; // Chiang Mai default
+  var CENTER = [18.1833, 97.9333]; // Mae Sariang, Mae Hong Son default
   var DEFAULT_VEGETABLES = [
     {id:"babycos", name:"เบบี้คอส", sizes:{"0.8kg":{price:35,stock:20,promo:true},"1kg":{price:40,stock:20,promo:false},"3kg":{price:110,stock:10,promo:false},"5kg":{price:170,stock:5,promo:false}}},
     {id:"saladcos", name:"สลัดคอส", sizes:{"0.8kg":{price:30,stock:20,promo:true},"1kg":{price:38,stock:20,promo:false},"3kg":{price:105,stock:10,promo:false},"5kg":{price:165,stock:5,promo:false}}},
@@ -746,21 +768,27 @@
     var vegOrder = [];
     activeOrders().forEach(function(o){
       o.items.forEach(function(it){
-        if(!vegMap[it.vegName]){ vegMap[it.vegName] = {}; vegOrder.push(it.vegName); }
-        vegMap[it.vegName][it.size] = (vegMap[it.vegName][it.size] || 0) + it.qty;
+        var key = it.vegId ? ("id:" + it.vegId) : ("name:" + it.vegName);
+        if(!vegMap[key]){ vegMap[key] = {vegId: it.vegId, vegName: it.vegName, sizes: {}}; vegOrder.push(key); }
+        vegMap[key].sizes[it.size] = (vegMap[key].sizes[it.size] || 0) + it.qty;
       });
     });
-    return vegOrder.map(function(vegName){
-      var sizesObj = vegMap[vegName];
-      var sizeKeys = Object.keys(sizesObj).sort(function(a,b){ return sizeWeight(a) - sizeWeight(b); });
+    return vegOrder.map(function(key){
+      var entry = vegMap[key];
+      var v = entry.vegId ? vegById(entry.vegId) : null;
+      var sizeKeys = Object.keys(entry.sizes).sort(function(a,b){ return sizeWeight(a) - sizeWeight(b); });
       var totalKg = 0;
       var sizes = sizeKeys.map(function(sz){
-        var qty = sizesObj[sz];
+        var qty = entry.sizes[sz];
         var kgAmt = qty * sizeWeight(sz);
         totalKg += kgAmt;
-        return {size: sz, qty: qty, kg: kgAmt};
+        var stockDiff = null;
+        if(v && v.sizes[sz] && v.sizes[sz].stock !== null && typeof v.sizes[sz].stock !== "undefined"){
+          stockDiff = v.sizes[sz].stock - qty;
+        }
+        return {size: sz, qty: qty, kg: kgAmt, stockDiff: stockDiff};
       });
-      return {vegName: vegName, sizes: sizes, totalKg: totalKg};
+      return {vegName: entry.vegName, sizes: sizes, totalKg: totalKg};
     });
   }
   function totalOrderedBags(vegId, size){
@@ -819,6 +847,8 @@
     }, 250);
   });
 
+  document.getElementById("delivery-list").addEventListener("scroll", function(){ updateScrollIndicators(); });
+
   // ---------- navigation ----------
   document.querySelectorAll(".nav-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
@@ -827,6 +857,7 @@
       btn.classList.add("active");
       document.getElementById("page-" + btn.dataset.page).classList.add("active");
       if(btn.dataset.page === "delivery" && map){ setTimeout(function(){ map.invalidateSize(); }, 60); }
+      if(btn.dataset.page === "delivery"){ setTimeout(function(){ updateScrollIndicators(); }, 60); }
       if(btn.dataset.page === "orders" && pickerMap){ setTimeout(function(){ pickerMap.invalidateSize(); }, 60); }
       if(btn.dataset.page === "summary"){ renderSummary(); }
       if(btn.dataset.page === "dashboard"){ renderCharts(); }
@@ -887,6 +918,11 @@
   function itemsSummary(o){
     return o.items.map(function(it){ return it.vegName + " " + it.size + " x" + it.qty; }).join(", ");
   }
+  function itemsSummaryLines(o){
+    return '<div class="items-lines">' + o.items.map(function(it){
+      return '<div>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</div>';
+    }).join("") + '</div>';
+  }
   function statusBadges(o){
     if(o.cancelled){ return '<span class="badge cancelled">ยกเลิกแล้ว</span>'; }
     return '<span class="badge ' + (o.deliveryStatus==="delivered"?"delivered":"pending") + '">' + (o.deliveryStatus==="delivered"?"ส่งแล้ว":"รอจัดส่ง") + '</span> ' +
@@ -897,16 +933,18 @@
   function renderStockTable(){
     var body = document.getElementById("stock-table-body");
     var rows = [];
-    vegetables.forEach(function(v){
+    var VEG_PALETTE = ["#4C8C6B","#D98A3D","#5B8FBF","#B5638C","#8A9C3E","#4CA8A0","#C25B5B","#6D6DBF"];
+    vegetables.forEach(function(v, vIdx){
+      var vegColor = VEG_PALETTE[vIdx % VEG_PALETTE.length];
       if(!v.sizes) v.sizes = {};
       var sizeKeys = vegSizeKeys(v);
       if(v.hidden){
-        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '"><td colspan="7"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
+        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
           '<div class="veg-btns"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       if(sizeKeys.length === 0){
-        rows.push('<tr data-veg="' + v.id + '"><td colspan="7"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
+        rows.push('<tr data-veg="' + v.id + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
           '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
@@ -914,12 +952,13 @@
         var s = v.sizes[sz];
         var info = computeStockInfo(v, sz);
         var nameCell = idx === 0
-          ? '<td rowspan="' + sizeKeys.length + '" style="max-width:150px;"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
+          ? '<td rowspan="' + sizeKeys.length + '" style="max-width:150px; border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
             '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td>'
           : "";
+        var sizeCellStyle = idx === 0 ? "" : ' style="border-left:5px solid ' + vegColor + ';"';
         var stockVal = (s.stock === null || typeof s.stock === "undefined") ? "" : s.stock;
         rows.push('<tr class="' + info.cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
-          nameCell + '<td><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
+          nameCell + '<td' + sizeCellStyle + '><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
           '<td><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
           '<td>' + info.label + (info.sub ? '<div style="font-size:10.5px; color:var(--ink-muted); font-weight:400;">' + info.sub + '</div>' : '') + '</td>' +
@@ -1687,15 +1726,18 @@
       .sort(function(a,b){ return b.createdAt - a.createdAt; });
     if(filtered.length === 0){
       wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ตรงกับตัวกรองนี้</div>';
+      updateScrollIndicators();
       return;
     }
     wrap.innerHTML = filtered.map(function(o){
       var isOpen = !!expandedOrders[o.id];
+      var telHref = o.phone ? ('tel:' + o.phone.replace(/[^0-9+]/g,"")) : null;
       return '<div class="ticket del-item' + (o.cancelled ? " is-cancelled" : "") + (isOpen ? " is-expanded" : "") + '" data-id="' + o.id + '"><div class="num">🥬</div>' +
         '<div class="body"><div class="name">' + esc(o.customerName || "ลูกค้าไม่ระบุชื่อ") + (o.lat==null ? ' <span style="font-size:10px;color:var(--ink-muted);">(ไม่มีพิกัด)</span>' : '') + ' <span class="expand-hint">' + (isOpen ? "▲" : "▼") + '</span></div>' +
-        '<div class="meta">' + itemsSummary(o) + '</div>' +
+        itemsSummaryLines(o) +
         '<div class="times">รับ: ' + fmtDateTime(o.createdAt) + (o.deliveredAt ? " · ส่ง: " + fmtDateTime(o.deliveredAt) : "") + '</div>' +
         '<div class="meta" style="margin-top:4px;">' + statusBadges(o) + '</div>' +
+        (telHref ? '<div class="phone-line"><a href="' + telHref + '" onclick="event.stopPropagation()">📞 ' + esc(o.phone) + '</a></div>' : '') +
         (isOpen ? actionButtonsHtml(o) : '') +
         '</div>' +
         '<div class="amount">' + money(o.total) + '</div></div>';
@@ -1714,6 +1756,27 @@
         }
       });
     });
+    updateScrollIndicators();
+  }
+
+  function updateScrollIndicators(){
+    var list = document.getElementById("delivery-list");
+    var track = document.getElementById("scroll-track");
+    var thumb = document.getElementById("scroll-thumb");
+    if(!list || !track || !thumb) return;
+    var scrollable = list.scrollHeight > list.clientHeight + 2;
+    if(!scrollable){
+      track.style.display = "none";
+      return;
+    }
+    track.style.display = "block";
+    var trackHeight = track.clientHeight;
+    var thumbHeight = Math.max(24, (list.clientHeight / list.scrollHeight) * trackHeight);
+    var maxScroll = list.scrollHeight - list.clientHeight;
+    var maxThumbTop = trackHeight - thumbHeight;
+    var thumbTop = maxScroll > 0 ? (list.scrollTop / maxScroll) * maxThumbTop : 0;
+    thumb.style.height = thumbHeight + "px";
+    thumb.style.top = thumbTop + "px";
   }
 
   // ---------- GPS tracking ----------
@@ -1770,11 +1833,21 @@
       return;
     }
     var grandKg = 0;
-    var html = "";
+    var html = '<p class="hint" style="margin-bottom:14px;">💡 คอลัมน์ขวาสุด = ขาด/เหลือ เทียบกับสต๊อคที่กรอกไว้ในหน้าจัดการสต๊อค (สีแดงมีเครื่องหมาย − คือขาด, "–" คือยังไม่ได้กรอกสต๊อค)</p>';
     data.forEach(function(veg){
       grandKg += veg.totalKg;
       var sizeLines = veg.sizes.map(function(sz){
-        return '<div class="summary-size-row"><span class="l">' + sz.size + ' — ' + sz.qty + ' ถุง</span><span class="r">' + kg(sz.kg) + '</span></div>';
+        var diffHtml;
+        if(sz.stockDiff === null){
+          diffHtml = '<span class="diff none">–</span>';
+        } else if(sz.stockDiff < 0){
+          diffHtml = '<span class="diff short">' + sz.stockDiff + '</span>';
+        } else if(sz.stockDiff === 0){
+          diffHtml = '<span class="diff zero">0</span>';
+        } else {
+          diffHtml = '<span class="diff ok">' + sz.stockDiff + '</span>';
+        }
+        return '<div class="summary-size-row"><span class="l">' + sz.size + ' — ' + sz.qty + ' ถุง</span><span class="r">' + kg(sz.kg) + '</span>' + diffHtml + '</div>';
       }).join("");
       html += '<div class="summary-veg-card"><div class="veg-head"><h3>' + esc(veg.vegName) + '</h3><span class="total-kg">' + kg(veg.totalKg) + '</span></div>' + sizeLines + '</div>';
     });
