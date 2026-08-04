@@ -302,15 +302,29 @@
   .empty-note{color:var(--ink-muted); font-size:13px; padding:14px; text-align:center;}
 
   /* ===== Summary page ===== */
+  #summary-content{max-width:620px;}
   .summary-veg-card{background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 20px; margin-bottom:14px;}
-  .summary-veg-card .veg-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .summary-veg-card .veg-head{display:grid; grid-template-columns:1fr 100px 110px; align-items:center; margin-bottom:10px;}
   .summary-veg-card .veg-head h3{margin:0; font-size:16px;}
-  .summary-veg-card .veg-head .total-kg{font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--green); background:var(--green-pale); padding:4px 12px; border-radius:20px; font-size:13px;}
-  .summary-size-row{display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:center; padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .summary-veg-card .veg-head .total-kg{font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--green); background:var(--green-pale); padding:4px 12px; border-radius:20px; font-size:13px; text-align:center; justify-self:center;}
+  .summary-col-header{
+    display:grid; grid-template-columns:1fr 100px 110px; align-items:end;
+    padding:0 20px 8px; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--ink-muted); font-weight:700;
+  }
+  .summary-col-header span:nth-child(2){text-align:center; border-left:2px solid var(--line); padding-left:14px; margin-left:2px;}
+  .summary-col-header span:nth-child(3){text-align:center; border-left:2px solid var(--line); padding-left:14px; margin-left:2px;}
+  .summary-size-row{display:grid; grid-template-columns:1fr 100px 110px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px;}
   .summary-size-row:last-child{border-bottom:none;}
   .summary-size-row .l{color:var(--ink-muted);}
-  .summary-size-row .r{font-family:'IBM Plex Mono',monospace; font-weight:600;}
-  .summary-size-row .diff{font-family:'IBM Plex Mono',monospace; font-weight:700; min-width:34px; text-align:right;}
+  .summary-size-row .r{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; text-align:center;
+    border-left:2px solid var(--line); padding-left:14px; margin-left:2px;
+  }
+  .summary-size-row .diff{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; text-align:center;
+    border-left:2px solid var(--line); padding-left:14px; margin-left:2px;
+  }
   .summary-size-row .diff.short{color:var(--red);}
   .summary-size-row .diff.zero{color:var(--ink-muted);}
   .summary-size-row .diff.ok{color:var(--green);}
@@ -356,12 +370,32 @@
     padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer;
     box-shadow:var(--shadow); font-family:'Prompt',sans-serif;
   }
-  .delivery-list{max-height:640px; overflow-y:auto; padding-right:2px;}
+  html{
+    scrollbar-width:none; -ms-overflow-style:none;
+  }
+  html::-webkit-scrollbar{width:0; height:0; background:transparent;}
+  .page-scroll-track{
+    position:fixed; top:10px; bottom:10px; right:4px; width:4px;
+    background:transparent; border-radius:4px; z-index:9000;
+    opacity:0; transition:opacity .35s ease; pointer-events:none;
+  }
+  .page-scroll-track.visible{opacity:1;}
+  .page-scroll-thumb{
+    position:absolute; left:0; width:100%; background:var(--green);
+    border-radius:4px; opacity:0.55;
+  }
+  .delivery-list{
+    max-height:640px; overflow-y:auto; padding-right:2px;
+    scrollbar-width:none; -ms-overflow-style:none;
+  }
+  .delivery-list::-webkit-scrollbar{width:0; height:0; background:transparent;}
   .delivery-list-wrap{position:relative;}
   .scroll-track{
     position:absolute; top:4px; bottom:4px; right:2px; width:4px;
-    background:var(--line); border-radius:4px; overflow:hidden; z-index:5;
+    background:transparent; border-radius:4px; overflow:hidden; z-index:5;
+    opacity:0; transition:opacity .35s ease;
   }
+  .scroll-track.visible{opacity:1;}
   .scroll-thumb{
     position:absolute; left:0; width:100%; background:var(--green);
     border-radius:4px; opacity:0.55;
@@ -625,6 +659,7 @@
 </div>
 
 <div class="toast" id="dm-toast"></div>
+<div class="page-scroll-track" id="page-scroll-track"><div class="page-scroll-thumb" id="page-scroll-thumb"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
@@ -847,7 +882,7 @@
     }, 250);
   });
 
-  document.getElementById("delivery-list").addEventListener("scroll", function(){ updateScrollIndicators(); });
+  // (delivery-list scroll listener is now attached internally by makeScrollIndicator)
 
   // ---------- navigation ----------
   document.querySelectorAll(".nav-btn").forEach(function(btn){
@@ -1654,7 +1689,7 @@
     if(o.cancelled) return false;
     if(filter === "pending") return o.deliveryStatus !== "delivered";
     if(filter === "delivered") return o.deliveryStatus === "delivered";
-    if(filter === "unpaid") return o.paymentStatus === "unpaid";
+    if(filter === "unpaid") return o.deliveryStatus === "delivered" && o.paymentStatus === "unpaid";
     return true; // "all" (excludes cancelled)
   }
 
@@ -1759,24 +1794,58 @@
     updateScrollIndicators();
   }
 
-  function updateScrollIndicators(){
-    var list = document.getElementById("delivery-list");
-    var track = document.getElementById("scroll-track");
-    var thumb = document.getElementById("scroll-thumb");
-    if(!list || !track || !thumb) return;
-    var scrollable = list.scrollHeight > list.clientHeight + 2;
-    if(!scrollable){
-      track.style.display = "none";
-      return;
+  function makeScrollIndicator(trackId, thumbId, opts){
+    var track = document.getElementById(trackId);
+    var thumb = document.getElementById(thumbId);
+    var hideTimer = null;
+    function metrics(){
+      if(opts.isWindow){
+        return {
+          scrollTop: window.scrollY || document.documentElement.scrollTop,
+          scrollHeight: document.documentElement.scrollHeight,
+          clientHeight: window.innerHeight
+        };
+      }
+      var el = opts.getEl();
+      return {scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight};
     }
-    track.style.display = "block";
-    var trackHeight = track.clientHeight;
-    var thumbHeight = Math.max(24, (list.clientHeight / list.scrollHeight) * trackHeight);
-    var maxScroll = list.scrollHeight - list.clientHeight;
-    var maxThumbTop = trackHeight - thumbHeight;
-    var thumbTop = maxScroll > 0 ? (list.scrollTop / maxScroll) * maxThumbTop : 0;
-    thumb.style.height = thumbHeight + "px";
-    thumb.style.top = thumbTop + "px";
+    function update(){
+      if(!track || !thumb) return;
+      var m = metrics();
+      var scrollable = m.scrollHeight > m.clientHeight + 2;
+      if(!scrollable){
+        track.style.display = "none";
+        return;
+      }
+      track.style.display = "block";
+      var trackHeight = track.clientHeight;
+      var thumbHeight = Math.max(24, (m.clientHeight / m.scrollHeight) * trackHeight);
+      var maxScroll = m.scrollHeight - m.clientHeight;
+      var maxThumbTop = trackHeight - thumbHeight;
+      var thumbTop = maxScroll > 0 ? (m.scrollTop / maxScroll) * maxThumbTop : 0;
+      thumb.style.height = thumbHeight + "px";
+      thumb.style.top = thumbTop + "px";
+    }
+    function reveal(){
+      if(!track) return;
+      update();
+      track.classList.add("visible");
+      if(hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(function(){ track.classList.remove("visible"); }, 900);
+    }
+    var evtTarget = opts.isWindow ? window : opts.getEl();
+    evtTarget.addEventListener("scroll", reveal);
+    return update;
+  }
+
+  var updateDeliveryScrollIndicator = makeScrollIndicator("scroll-track", "scroll-thumb", {
+    getEl: function(){ return document.getElementById("delivery-list"); }
+  });
+  var updatePageScrollIndicator = makeScrollIndicator("page-scroll-track", "page-scroll-thumb", { isWindow: true });
+
+  function updateScrollIndicators(){
+    updateDeliveryScrollIndicator();
+    updatePageScrollIndicator();
   }
 
   // ---------- GPS tracking ----------
@@ -1833,7 +1902,8 @@
       return;
     }
     var grandKg = 0;
-    var html = '<p class="hint" style="margin-bottom:14px;">💡 คอลัมน์ขวาสุด = ขาด/เหลือ เทียบกับสต๊อคที่กรอกไว้ในหน้าจัดการสต๊อค (สีแดงมีเครื่องหมาย − คือขาด, "–" คือยังไม่ได้กรอกสต๊อค)</p>';
+    var html = '<p class="hint" style="margin-bottom:14px;">💡 คอลัมน์ขวาสุด = ขาด/เหลือ เทียบกับสต๊อคที่กรอกไว้ในหน้าจัดการสต๊อค (สีแดงมีเครื่องหมาย − คือขาด, "–" คือยังไม่ได้กรอกสต๊อค)</p>' +
+      '<div class="summary-col-header"><span>ชื่อผัก / ขนาด / จำนวนถุง</span><span>น้ำหนัก (กก.)</span><span>ขาด / เหลือ (ถุง)</span></div>';
     data.forEach(function(veg){
       grandKg += veg.totalKg;
       var sizeLines = veg.sizes.map(function(sz){
