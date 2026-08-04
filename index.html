@@ -370,6 +370,28 @@
     padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer;
     box-shadow:var(--shadow); font-family:'Prompt',sans-serif;
   }
+  .map-search-ctrl{display:flex; align-items:center; margin:0; background:transparent; border:none;}
+  .map-search-toggle{
+    width:32px; height:32px; background:var(--surface); border:1px solid var(--line); border-radius:6px;
+    cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow); padding:0; flex-shrink:0;
+  }
+  .map-search-toggle:hover{background:var(--surface-2);}
+  .map-search-box{
+    display:none; align-items:center; gap:4px; margin-left:6px; background:var(--surface);
+    border:1px solid var(--line); border-radius:6px; padding:3px; box-shadow:var(--shadow);
+  }
+  .map-search-box.open{display:flex;}
+  .map-search-input{
+    border:none; outline:none; font-size:12.5px; font-family:'Prompt',sans-serif;
+    width:170px; padding:5px 7px; background:transparent; color:var(--ink);
+  }
+  .map-search-go{
+    background:var(--green); color:#fff; border:none; border-radius:5px; padding:6px 12px;
+    font-size:12px; font-weight:600; cursor:pointer; font-family:'Prompt',sans-serif; flex-shrink:0;
+  }
+  .map-search-go:hover{filter:brightness(1.1);}
+  .map-search-go:disabled{opacity:0.6; cursor:default;}
   html{
     scrollbar-width:none; -ms-overflow-style:none;
   }
@@ -641,6 +663,7 @@
         <button class="range-btn" data-filter="pending">รอจัดส่ง</button>
         <button class="range-btn" data-filter="delivered">ส่งแล้ว</button>
         <button class="range-btn" data-filter="unpaid">ค้างจ่าย</button>
+        <button class="range-btn" data-filter="nolocation">ไม่ระบุที่จัดส่ง</button>
         <button class="range-btn" data-filter="cancelled">ยกเลิกแล้ว</button>
       </div>
       <div class="delivery-layout">
@@ -682,7 +705,7 @@
 
   var vegetables = [];
   var orders = [];
-  var map, pickerMap, pickerMarker, carMarker, watchId = null;
+  var map, pickerMap, pickerMarker, carMarker, deliverySearchMarker, watchId = null;
   var orderMarkers = {};
   var notifiedNear = {};
   var itemRowSeq = 0;
@@ -1599,11 +1622,75 @@
     pickerMap.on("click", function(e){
       setCoords(e.latlng.lat, e.latlng.lng);
     });
+    addMapSearchControl(pickerMap, function(lat, lng, name){
+      setCoords(lat, lng);
+      toast("พบตำแหน่งแล้ว: " + name);
+    });
 
     map = L.map("dm-map").setView(CENTER, 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors", maxZoom: 19
     }).addTo(map);
+    addMapSearchControl(map, function(lat, lng, name){
+      map.setView([lat, lng], 15);
+      if(deliverySearchMarker){ map.removeLayer(deliverySearchMarker); }
+      deliverySearchMarker = L.marker([lat, lng]).addTo(map).bindPopup(esc(name)).openPopup();
+      toast("ไปยัง: " + name);
+    });
+  }
+
+  function addMapSearchControl(mapInstance, onResult){
+    var SearchControl = L.Control.extend({
+      options: {position: "topleft"},
+      onAdd: function(){
+        var container = L.DomUtil.create("div", "leaflet-control map-search-ctrl");
+        var toggleBtn = L.DomUtil.create("button", "map-search-toggle", container);
+        toggleBtn.type = "button";
+        toggleBtn.innerHTML = "🔍";
+        toggleBtn.title = "ค้นหาสถานที่บนแผนที่";
+
+        var box = L.DomUtil.create("div", "map-search-box", container);
+        var input = L.DomUtil.create("input", "map-search-input", box);
+        input.type = "text";
+        input.placeholder = "ค้นหาสถานที่ / ที่อยู่...";
+        var goBtn = L.DomUtil.create("button", "map-search-go", box);
+        goBtn.type = "button";
+        goBtn.textContent = "ไป";
+
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        function doSearch(){
+          var q = input.value.trim();
+          if(!q) return;
+          var origText = goBtn.textContent;
+          goBtn.disabled = true;
+          goBtn.textContent = "...";
+          fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q + ", Thailand"))
+            .then(function(r){ return r.json(); })
+            .then(function(data){
+              if(data && data.length > 0){
+                onResult(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
+              } else {
+                toast("หาสถานที่นี้ไม่พบ ลองคำอื่นดู");
+              }
+            })
+            .catch(function(){ toast("ค้นหาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"); })
+            .finally(function(){ goBtn.disabled = false; goBtn.textContent = origText; });
+        }
+
+        toggleBtn.addEventListener("click", function(){
+          var isOpen = box.classList.contains("open");
+          box.classList.toggle("open", !isOpen);
+          if(!isOpen){ setTimeout(function(){ input.focus(); }, 60); }
+        });
+        goBtn.addEventListener("click", doSearch);
+        input.addEventListener("keydown", function(e){ if(e.key === "Enter"){ doSearch(); } });
+
+        return container;
+      }
+    });
+    mapInstance.addControl(new SearchControl());
   }
 
   function statusColor(o){
@@ -1690,6 +1777,7 @@
     if(filter === "pending") return o.deliveryStatus !== "delivered";
     if(filter === "delivered") return o.deliveryStatus === "delivered";
     if(filter === "unpaid") return o.deliveryStatus === "delivered" && o.paymentStatus === "unpaid";
+    if(filter === "nolocation") return (o.lat == null || o.lng == null) && o.deliveryStatus !== "delivered";
     return true; // "all" (excludes cancelled)
   }
 
