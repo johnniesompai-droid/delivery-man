@@ -242,6 +242,11 @@
   .remove-x{background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:6px;}
 
   .order-total{padding:12px 14px; background:var(--green-pale); border-radius:8px; margin-top:6px;}
+  .order-review-list{margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed rgba(31,77,54,0.25);}
+  .order-review-list .review-empty{font-size:12px; color:var(--ink-muted); padding:2px 0;}
+  .order-review-item{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12.5px; padding:3px 0;}
+  .order-review-item .ri-name{color:var(--ink); font-weight:500;}
+  .order-review-item .ri-amt{font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--green); white-space:nowrap;}
   .order-total .row{display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:2px 0;}
   .order-total .row.discount{color:var(--gold); font-weight:600;}
   .order-total .row.grand .lbl{font-size:13.5px; color:var(--green); font-weight:700;}
@@ -258,9 +263,11 @@
   th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-muted); padding:8px 10px; border-bottom:1px solid var(--line);}
   td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
   td input[type=number]{width:80px; padding:6px 8px; font-size:12.5px;}
-  tr.stock-out{background:var(--red-pale);}
-  tr.stock-low{background:var(--gold-pale);}
-  tr.stock-unknown{background:#EAF2F8;}
+  .stock-status-text{font-weight:600;}
+  .stock-status-text.mode-shortage, .stock-status-text.mode-out{color:var(--red); font-weight:700;}
+  .stock-status-text.mode-low{color:var(--gold); font-weight:700;}
+  .stock-status-text.mode-unknown{color:#2F6FA8; font-weight:600;}
+  .stock-status-text.mode-ok{color:var(--green); font-weight:600;}
   .promo-switch{
     display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px;
     font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--line); background:var(--surface);
@@ -614,6 +621,7 @@
             </label>
 
             <div class="order-total" id="order-total-box">
+              <div id="order-review-list" class="order-review-list"></div>
               <div class="row"><span>ราคาปกติ</span><span class="mono" id="order-subtotal-val">฿0</span></div>
               <div class="row discount" id="order-discount-row" style="display:none;"><span>ส่วนลดโปรโมชั่น</span><span class="mono" id="order-discount-val">-฿0</span></div>
               <div class="row grand"><span class="lbl">ยอดรวมทั้งหมด</span><span class="val mono" id="order-total-val">฿0</span></div>
@@ -1005,17 +1013,20 @@
     var body = document.getElementById("stock-table-body");
     var rows = [];
     var VEG_PALETTE = ["#4C8C6B","#D98A3D","#5B8FBF","#B5638C","#8A9C3E","#4CA8A0","#C25B5B","#6D6DBF"];
+    var VEG_PALETTE_LIGHT = ["#E7F1EC","#FBEEE0","#E9F1F9","#F6E9EF","#F1F4E5","#E7F5F4","#FAEBEA","#EAEAF6"];
     vegetables.forEach(function(v, vIdx){
       var vegColor = VEG_PALETTE[vIdx % VEG_PALETTE.length];
+      var vegColorLight = VEG_PALETTE_LIGHT[vIdx % VEG_PALETTE_LIGHT.length];
+      var rowBg = "background:" + vegColorLight + ";";
       if(!v.sizes) v.sizes = {};
       var sizeKeys = vegSizeKeys(v);
       if(v.hidden){
-        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
+        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
           '<div class="veg-btns"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       if(sizeKeys.length === 0){
-        rows.push('<tr data-veg="' + v.id + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
+        rows.push('<tr data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
           '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
@@ -1028,11 +1039,11 @@
           : "";
         var sizeCellStyle = idx === 0 ? "" : ' style="border-left:5px solid ' + vegColor + ';"';
         var stockVal = (s.stock === null || typeof s.stock === "undefined") ? "" : s.stock;
-        rows.push('<tr class="' + info.cls + '" data-veg="' + v.id + '" data-size="' + sz + '">' +
+        rows.push('<tr data-veg="' + v.id + '" data-size="' + sz + '" style="' + rowBg + '">' +
           nameCell + '<td' + sizeCellStyle + '><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
           '<td><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
-          '<td>' + info.label + (info.sub ? '<div style="font-size:10.5px; color:var(--ink-muted); font-weight:400;">' + info.sub + '</div>' : '') + '</td>' +
+          '<td><span class="stock-status-text mode-' + info.mode + '">' + info.label + '</span>' + (info.sub ? '<div style="font-size:10.5px; color:var(--ink-muted); font-weight:400;">' + info.sub + '</div>' : '') + '</td>' +
           '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td>' +
           '<td><button type="button" class="del-size-btn" data-veg="' + v.id + '" data-size="' + sz + '" title="ลบขนาดนี้">✕</button></td></tr>');
       });
@@ -1433,6 +1444,16 @@
   function updateOrderTotal(){
     var promoOn = document.getElementById("promo-toggle").checked;
     var res = computeTotals(itemRows, promoOn);
+
+    var reviewWrap = document.getElementById("order-review-list");
+    if(res.items.length === 0){
+      reviewWrap.innerHTML = '<div class="review-empty">ยังไม่ได้ระบุจำนวนผัก</div>';
+    } else {
+      reviewWrap.innerHTML = res.items.map(function(it){
+        return '<div class="order-review-item"><span class="ri-name">' + esc(it.vegName) + ' ' + it.size + ' × ' + it.qty + ' ถุง</span><span class="ri-amt">' + money(it.subtotal) + '</span></div>';
+      }).join("");
+    }
+
     document.getElementById("order-subtotal-val").textContent = money(res.normalTotal);
     var discRow = document.getElementById("order-discount-row");
     if(res.discount > 0){
