@@ -320,25 +320,31 @@
   .empty-note{color:var(--ink-muted); font-size:13px; padding:14px; text-align:center;}
 
   /* ===== Summary page ===== */
-  #summary-content{max-width:620px;}
+  #summary-content{max-width:700px;}
   .summary-veg-card{background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 20px; margin-bottom:14px;}
-  .summary-veg-card .veg-head{display:grid; grid-template-columns:1fr 100px 110px; align-items:center; margin-bottom:10px;}
+  .summary-veg-card .veg-head{display:grid; grid-template-columns:1fr 100px 90px 90px; align-items:center; margin-bottom:10px;}
   .summary-veg-card .veg-head h3{margin:0; font-size:16px;}
   .summary-veg-card .veg-head .total-kg{font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--green); background:var(--green-pale); padding:4px 12px; border-radius:20px; font-size:13px; text-align:center; justify-self:center;}
   .summary-col-header{
-    display:grid; grid-template-columns:1fr 100px 110px; align-items:end;
+    display:grid; grid-template-columns:1fr 100px 90px 90px; align-items:end;
     padding:0 20px 8px; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;
     color:var(--ink-muted); font-weight:700;
   }
-  .summary-col-header span:nth-child(2){text-align:center; border-left:2px solid var(--line); padding-left:14px; margin-left:2px;}
-  .summary-col-header span:nth-child(3){text-align:center; border-left:2px solid var(--line); padding-left:14px; margin-left:2px;}
-  .summary-size-row{display:grid; grid-template-columns:1fr 100px 110px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .summary-col-header span:nth-child(2), .summary-col-header span:nth-child(3), .summary-col-header span:nth-child(4){
+    text-align:center; border-left:2px solid var(--line); padding-left:14px; margin-left:2px;
+  }
+  .summary-size-row{display:grid; grid-template-columns:1fr 100px 90px 90px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px;}
   .summary-size-row:last-child{border-bottom:none;}
   .summary-size-row .l{color:var(--ink-muted);}
   .summary-size-row .r{
     font-family:'IBM Plex Mono',monospace; font-weight:600; text-align:center;
     border-left:2px solid var(--line); padding-left:14px; margin-left:2px;
   }
+  .summary-size-row .stocktot{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; text-align:center; color:var(--ink);
+    border-left:2px solid var(--line); padding-left:14px; margin-left:2px;
+  }
+  .summary-size-row .stocktot.none{color:var(--ink-muted); opacity:.4;}
   .summary-size-row .diff{
     font-family:'IBM Plex Mono',monospace; font-weight:700; text-align:center;
     border-left:2px solid var(--line); padding-left:14px; margin-left:2px;
@@ -521,36 +527,40 @@
     <section class="page active" id="page-dashboard">
       <div class="page-head">
         <h2>แดชบอร์ด</h2>
-        <p>ภาพรวมออเดอร์ ยอดขาย และสต๊อคผักทั้งหมด</p>
+        <p>ภาพรวมออเดอร์ ยอดขาย และสต๊อคผักทั้งหมด — เลือกช่วงเวลาเพื่อดูข้อมูลแยกเป็นงวดๆ</p>
       </div>
+
+      <div class="range-controls">
+        <button class="range-btn" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
+        <button class="range-btn" data-range="today">วันนี้</button>
+        <button class="range-btn" data-range="7">7 วันล่าสุด</button>
+        <button class="range-btn" data-range="30">30 วันล่าสุด</button>
+        <button class="range-btn" data-range="all">ทั้งหมด</button>
+        <span class="sep"></span>
+        <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="range-from" style="width:150px;">
+        <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="range-to" style="width:150px;">
+      </div>
+      <p class="hint" id="range-span-label" style="margin-bottom:16px;"></p>
+
       <div class="stat-grid">
-        <div class="stat-card"><div class="label">ออเดอร์ทั้งหมด</div><div class="value" id="stat-total-orders">0</div></div>
-        <div class="stat-card alt"><div class="label">ยอดขายรวม</div><div class="value" id="stat-revenue">฿0</div></div>
-        <div class="stat-card warn"><div class="label">รอจัดส่ง</div><div class="value" id="stat-pending">0</div></div>
-        <div class="stat-card danger"><div class="label">ค้างจ่าย</div><div class="value" id="stat-unpaid">฿0</div></div>
+        <div class="stat-card"><div class="label">ออเดอร์ในงวดนี้</div><div class="value" id="stat-total-orders">0</div></div>
+        <div class="stat-card alt"><div class="label">ยอดขายในงวดนี้</div><div class="value" id="stat-revenue">฿0</div></div>
+        <div class="stat-card warn"><div class="label">รอจัดส่ง (ในงวดนี้)</div><div class="value" id="stat-pending">0</div></div>
+        <div class="stat-card danger"><div class="label">ค้างจ่าย (ในงวดนี้)</div><div class="value" id="stat-unpaid">฿0</div></div>
       </div>
       <div class="panel-row">
         <div class="panel">
-          <h3>🧾 ออเดอร์ล่าสุด</h3>
+          <h3>🧾 ออเดอร์ในงวดนี้</h3>
           <div id="recent-orders-list"></div>
         </div>
         <div class="panel">
-          <h3>🧺 สรุปออเดอร์ผักทั้งหมด</h3>
+          <h3>🧺 สรุปออเดอร์ผักในงวดนี้</h3>
           <div id="dash-order-summary"></div>
         </div>
       </div>
 
       <div class="panel">
-        <h3>📈 วิเคราะห์ยอดขาย</h3>
-        <div class="range-controls">
-          <button class="range-btn" data-range="today">วันนี้</button>
-          <button class="range-btn active" data-range="7">7 วันล่าสุด</button>
-          <button class="range-btn" data-range="30">30 วันล่าสุด</button>
-          <button class="range-btn" data-range="all">ทั้งหมด</button>
-          <span class="sep"></span>
-          <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="range-from" style="width:150px;">
-          <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="range-to" style="width:150px;">
-        </div>
+        <h3>📈 วิเคราะห์ยอดขาย (ตามช่วงที่เลือกด้านบน)</h3>
         <div class="chart-grid">
           <div class="chart-box"><canvas id="chart-daily"></canvas></div>
           <div class="chart-box"><canvas id="chart-pie"></canvas></div>
@@ -733,7 +743,21 @@
   var itemRows = []; // {rowId, vegId, size, qty}
   var deliveryFilter = "all";
   var editingOrderId = null;
-  var currentRange = {from: startOfDay(Date.now() - 6*DAY_MS), to: endOfDay(Date.now())};
+  function getCurrentRoundRange(){
+    // Business cycle: orders taken Fri/Sat(/Sun), delivered Sunday. Find the Fri-Sun window containing "today"
+    // (or the most recently completed one, if today falls between rounds).
+    var now = new Date();
+    var day = now.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
+    var diffToFriday = (day - 5 + 7) % 7;
+    var friday = new Date(now);
+    friday.setDate(now.getDate() - diffToFriday);
+    friday.setHours(0,0,0,0);
+    var sunday = new Date(friday);
+    sunday.setDate(friday.getDate() + 2);
+    sunday.setHours(23,59,59,999);
+    return {from: friday.getTime(), to: sunday.getTime()};
+  }
+  var currentRange = getCurrentRoundRange();
   var dailyChart = null, pieChart = null;
 
   // ---------- storage adapter (uses Claude's window.storage when available, else localStorage) ----------
@@ -842,10 +866,14 @@
   function vegSizeKeys(v){
     return Object.keys((v && v.sizes) || {}).sort(function(a,b){ return sizeWeight(a) - sizeWeight(b); });
   }
-  function collectOrderSummaryData(){
+  function collectOrderSummaryData(range){
     var vegMap = {};
     var vegOrder = [];
-    activeOrders().forEach(function(o){
+    var ordersToUse = activeOrders();
+    if(range){
+      ordersToUse = ordersToUse.filter(function(o){ return o.createdAt >= range.from && o.createdAt <= range.to; });
+    }
+    ordersToUse.forEach(function(o){
       o.items.forEach(function(it){
         var key = it.vegId ? ("id:" + it.vegId) : ("name:" + it.vegName);
         if(!vegMap[key]){ vegMap[key] = {vegId: it.vegId, vegName: it.vegName, sizes: {}}; vegOrder.push(key); }
@@ -862,10 +890,12 @@
         var kgAmt = qty * sizeWeight(sz);
         totalKg += kgAmt;
         var stockDiff = null;
+        var stockTotal = null;
         if(v && v.sizes[sz] && v.sizes[sz].stock !== null && typeof v.sizes[sz].stock !== "undefined"){
           stockDiff = v.sizes[sz].stock - qty;
+          stockTotal = v.sizes[sz].stock;
         }
-        return {size: sz, qty: qty, kg: kgAmt, stockDiff: stockDiff};
+        return {size: sz, qty: qty, kg: kgAmt, stockDiff: stockDiff, stockTotal: stockTotal};
       });
       return {vegName: entry.vegName, sizes: sizes, totalKg: totalKg};
     });
@@ -955,7 +985,7 @@
 
   // ---------- dashboard ----------
   function renderDashboard(){
-    var act = activeOrders();
+    var act = activeOrders().filter(function(o){ return o.createdAt >= currentRange.from && o.createdAt <= currentRange.to; });
     document.getElementById("stat-total-orders").textContent = act.length;
     var revenue = act.reduce(function(s,o){ return s + o.total; }, 0);
     document.getElementById("stat-revenue").textContent = money(revenue);
@@ -965,9 +995,9 @@
     document.getElementById("stat-unpaid").textContent = money(unpaidAmt);
 
     var recentWrap = document.getElementById("recent-orders-list");
-    var recent = orders.slice().sort(function(a,b){ return b.createdAt - a.createdAt; }).slice(0,6);
+    var recent = act.slice().sort(function(a,b){ return b.createdAt - a.createdAt; }).slice(0,8);
     if(recent.length === 0){
-      recentWrap.innerHTML = '<div class="empty-note">ยังไม่มีออเดอร์ — ไปที่หน้า "รับออเดอร์" เพื่อเริ่มต้น</div>';
+      recentWrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>';
     } else {
       recentWrap.innerHTML = recent.map(function(o){
         return '<div class="ticket' + (o.cancelled ? " is-cancelled" : "") + '"><div class="num">🥬</div>' +
@@ -980,9 +1010,9 @@
     }
 
     var summaryWrap = document.getElementById("dash-order-summary");
-    var summaryData = collectOrderSummaryData();
+    var summaryData = collectOrderSummaryData(currentRange);
     if(summaryData.length === 0){
-      summaryWrap.innerHTML = '<div class="empty-note">ยังไม่มีออเดอร์</div>';
+      summaryWrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>';
     } else {
       var lines = [];
       summaryData.forEach(function(veg){
@@ -992,6 +1022,12 @@
         });
       });
       summaryWrap.innerHTML = lines.join("");
+    }
+
+    var spanLabel = document.getElementById("range-span-label");
+    if(spanLabel){
+      var fmtDate = function(ts){ return new Date(ts).toLocaleDateString("th-TH", {day:"numeric", month:"short", year:"numeric"}); };
+      spanLabel.textContent = "📅 กำลังแสดงข้อมูล: " + fmtDate(currentRange.from) + " – " + fmtDate(currentRange.to);
     }
   }
   function itemsSummary(o){
@@ -2114,8 +2150,8 @@
       return;
     }
     var grandKg = 0;
-    var html = '<p class="hint" style="margin-bottom:14px;">💡 คอลัมน์ขวาสุด = ขาด/เหลือ เทียบกับสต๊อคที่กรอกไว้ในหน้าจัดการสต๊อค (สีแดงมีเครื่องหมาย − คือขาด, "–" คือยังไม่ได้กรอกสต๊อค)</p>' +
-      '<div class="summary-col-header"><span>ชื่อผัก / ขนาด / จำนวนถุง</span><span>น้ำหนัก (กก.)</span><span>ขาด / เหลือ (ถุง)</span></div>';
+    var html = '<p class="hint" style="margin-bottom:14px;">💡 คอลัมน์ขาด/เหลือ = เทียบสต๊อคทั้งหมดกับจำนวนที่สั่ง (สีแดงมีเครื่องหมาย − คือขาด, "–" คือยังไม่ได้กรอกสต๊อค)</p>' +
+      '<div class="summary-col-header"><span>ชื่อผัก / ขนาด / จำนวนถุง</span><span>น้ำหนัก (กก.)</span><span>สต๊อคทั้งหมด</span><span>ขาด / เหลือ (ถุง)</span></div>';
     data.forEach(function(veg){
       grandKg += veg.totalKg;
       var sizeLines = veg.sizes.map(function(sz){
@@ -2129,7 +2165,10 @@
         } else {
           diffHtml = '<span class="diff ok">' + sz.stockDiff + '</span>';
         }
-        return '<div class="summary-size-row"><span class="l">' + sz.size + ' — ' + sz.qty + ' ถุง</span><span class="r">' + kg(sz.kg) + '</span>' + diffHtml + '</div>';
+        var stockTotHtml = sz.stockTotal === null
+          ? '<span class="stocktot none">–</span>'
+          : '<span class="stocktot">' + sz.stockTotal + ' ถุง</span>';
+        return '<div class="summary-size-row"><span class="l">' + sz.size + ' — ' + sz.qty + ' ถุง</span><span class="r">' + kg(sz.kg) + '</span>' + stockTotHtml + diffHtml + '</div>';
       }).join("");
       html += '<div class="summary-veg-card"><div class="veg-head"><h3>' + esc(veg.vegName) + '</h3><span class="total-kg">' + kg(veg.totalKg) + '</span></div>' + sizeLines + '</div>';
     });
@@ -2141,28 +2180,33 @@
   function initRangeInputs(){
     document.getElementById("range-from").value = toDateInputValue(currentRange.from);
     document.getElementById("range-to").value = toDateInputValue(currentRange.to);
+    document.querySelector('.range-controls .range-btn[data-range="round"]').classList.add("active");
     document.querySelectorAll(".range-controls .range-btn").forEach(function(btn){
       btn.addEventListener("click", function(){
         document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
         btn.classList.add("active");
         var now = Date.now();
-        if(btn.dataset.range === "today"){ currentRange = {from:startOfDay(now), to:endOfDay(now)}; }
+        if(btn.dataset.range === "round"){ currentRange = getCurrentRoundRange(); }
+        else if(btn.dataset.range === "today"){ currentRange = {from:startOfDay(now), to:endOfDay(now)}; }
         else if(btn.dataset.range === "7"){ currentRange = {from:startOfDay(now-6*DAY_MS), to:endOfDay(now)}; }
         else if(btn.dataset.range === "30"){ currentRange = {from:startOfDay(now-29*DAY_MS), to:endOfDay(now)}; }
         else { var earliest = orders.reduce(function(m,o){ return Math.min(m,o.createdAt); }, now); currentRange = {from:startOfDay(earliest), to:endOfDay(now)}; }
         document.getElementById("range-from").value = toDateInputValue(currentRange.from);
         document.getElementById("range-to").value = toDateInputValue(currentRange.to);
+        renderDashboard();
         renderCharts();
       });
     });
     document.getElementById("range-from").addEventListener("change", function(){
       document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
       currentRange.from = startOfDay(new Date(this.value).getTime());
+      renderDashboard();
       renderCharts();
     });
     document.getElementById("range-to").addEventListener("change", function(){
       document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
       currentRange.to = endOfDay(new Date(this.value).getTime());
+      renderDashboard();
       renderCharts();
     });
   }
