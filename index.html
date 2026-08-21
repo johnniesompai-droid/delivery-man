@@ -534,8 +534,8 @@
         <p>ภาพรวมออเดอร์ ยอดขาย และสต๊อคผักทั้งหมด — เลือกช่วงเวลาเพื่อดูข้อมูลแยกเป็นงวดๆ</p>
       </div>
 
-      <div class="range-controls">
-        <button class="range-btn" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
+      <div class="range-controls" id="dashboard-range-controls">
+        <button class="range-btn active" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
         <button class="range-btn" data-range="today">วันนี้</button>
         <button class="range-btn" data-range="7">7 วันล่าสุด</button>
         <button class="range-btn" data-range="30">30 วันล่าสุด</button>
@@ -677,8 +677,19 @@
     <section class="page" id="page-summary">
       <div class="page-head">
         <h2>สรุปออเดอร์</h2>
-        <p>สรุปจำนวนถุงและน้ำหนักรวมของผักแต่ละชนิด/ขนาด จากออเดอร์ทั้งหมด (ไม่รวมออเดอร์ที่ยกเลิก)</p>
+        <p>สรุปจำนวนถุงและน้ำหนักรวมของผักแต่ละชนิด/ขนาด (ไม่รวมออเดอร์ที่ยกเลิก) — เลือกช่วงเวลาเพื่อดูแยกเป็นงวดๆ</p>
       </div>
+      <div class="range-controls" id="summary-range-controls">
+        <button class="range-btn active" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
+        <button class="range-btn" data-range="today">วันนี้</button>
+        <button class="range-btn" data-range="7">7 วันล่าสุด</button>
+        <button class="range-btn" data-range="30">30 วันล่าสุด</button>
+        <button class="range-btn" data-range="all">ทั้งหมด</button>
+        <span class="sep"></span>
+        <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="summary-range-from" style="width:150px;">
+        <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="summary-range-to" style="width:150px;">
+      </div>
+      <p class="hint" id="summary-range-span-label" style="margin-bottom:16px;"></p>
       <div id="summary-content"></div>
     </section>
 
@@ -688,6 +699,17 @@
         <h2>จัดส่งผัก</h2>
         <p>แผนที่ตำแหน่งลูกค้า และติดตามตำแหน่งรถส่งแบบเรียลไทม์</p>
       </div>
+      <div class="range-controls" id="delivery-range-controls">
+        <button class="range-btn active" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
+        <button class="range-btn" data-range="today">วันนี้</button>
+        <button class="range-btn" data-range="7">7 วันล่าสุด</button>
+        <button class="range-btn" data-range="30">30 วันล่าสุด</button>
+        <button class="range-btn" data-range="all">ทั้งหมด</button>
+        <span class="sep"></span>
+        <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="delivery-range-from" style="width:150px;">
+        <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="delivery-range-to" style="width:150px;">
+      </div>
+      <p class="hint" id="delivery-range-span-label" style="margin-bottom:12px;"></p>
       <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
         <button class="btn btn-carrot" id="btn-toggle-gps">🚚 เริ่มติดตาม GPS</button>
         <button class="btn btn-ghost" id="btn-fit-map">🔎 ดูออเดอร์ทั้งหมด</button>
@@ -762,6 +784,8 @@
     return {from: friday.getTime(), to: sunday.getTime()};
   }
   var currentRange = getCurrentRoundRange();
+  var summaryRange = getCurrentRoundRange();
+  var deliveryRange = getCurrentRoundRange();
   var dailyChart = null, pieChart = null;
 
   // ---------- storage adapter (uses Claude's window.storage when available, else localStorage) ----------
@@ -1944,13 +1968,16 @@
     if(filter === "nolocation") return (o.lat == null || o.lng == null) && o.deliveryStatus !== "delivered";
     return true; // "all" (excludes cancelled)
   }
+  function passesDeliveryView(o){
+    return matchesFilter(o, deliveryFilter) && o.createdAt >= deliveryRange.from && o.createdAt <= deliveryRange.to;
+  }
 
   function renderMapMarkers(){
     if(!map) return;
     Object.keys(orderMarkers).forEach(function(id){ map.removeLayer(orderMarkers[id]); });
     orderMarkers = {};
     orders.forEach(function(o){
-      if(!matchesFilter(o, deliveryFilter)) return;
+      if(!passesDeliveryView(o)) return;
       if(o.lat == null || o.lng == null) return;
       var mk = L.marker([o.lat, o.lng], {icon: orderIcon(statusColor(o))}).addTo(map);
       mk.bindPopup(popupHtml(o));
@@ -2000,7 +2027,7 @@
   });
   document.getElementById("btn-fit-map").addEventListener("click", function(){
     if(!map){ toast("แผนที่ยังไม่พร้อมใช้งาน (โหลดไม่สำเร็จ)"); return; }
-    var visible = orders.filter(function(o){ return matchesFilter(o, deliveryFilter) && o.lat != null && o.lng != null; });
+    var visible = orders.filter(function(o){ return passesDeliveryView(o) && o.lat != null && o.lng != null; });
     if(visible.length === 0){ toast("ไม่มีออเดอร์ที่มีพิกัดตรงกับตัวกรองนี้"); return; }
     var bounds = L.latLngBounds(visible.map(function(o){ return [o.lat,o.lng]; }));
     map.fitBounds(bounds, {padding:[40,40]});
@@ -2009,10 +2036,10 @@
   var expandedOrders = {};
   function renderDeliveryList(){
     var wrap = document.getElementById("delivery-list");
-    var filtered = orders.filter(function(o){ return matchesFilter(o, deliveryFilter); })
+    var filtered = orders.filter(passesDeliveryView)
       .sort(function(a,b){ return b.createdAt - a.createdAt; });
     if(filtered.length === 0){
-      wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ตรงกับตัวกรองนี้</div>';
+      wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ตรงกับตัวกรองนี้ หรือไม่มีออเดอร์ในช่วงเวลาที่เลือก</div>';
       updateScrollIndicators();
       return;
     }
@@ -2148,9 +2175,9 @@
   // ---------- summary page ----------
   function renderSummary(){
     var wrap = document.getElementById("summary-content");
-    var data = collectOrderSummaryData();
+    var data = collectOrderSummaryData(summaryRange);
     if(data.length === 0){
-      wrap.innerHTML = '<div class="empty-note">ยังไม่มีออเดอร์ให้สรุป</div>';
+      wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>';
       return;
     }
     var grandKg = 0;
@@ -2181,37 +2208,75 @@
   }
 
   // ---------- dashboard charts ----------
-  function initRangeInputs(){
-    document.getElementById("range-from").value = toDateInputValue(currentRange.from);
-    document.getElementById("range-to").value = toDateInputValue(currentRange.to);
-    document.querySelector('.range-controls .range-btn[data-range="round"]').classList.add("active");
-    document.querySelectorAll(".range-controls .range-btn").forEach(function(btn){
+  function setupRangeControl(opts){
+    var container = document.getElementById(opts.containerId);
+    var fromInput = document.getElementById(opts.fromId);
+    var toInput = document.getElementById(opts.toId);
+    var spanLabel = document.getElementById(opts.spanLabelId);
+
+    function refreshUI(){
+      var r = opts.getRange();
+      fromInput.value = toDateInputValue(r.from);
+      toInput.value = toDateInputValue(r.to);
+      if(spanLabel){
+        var fmtDate = function(ts){ return new Date(ts).toLocaleDateString("th-TH", {day:"numeric", month:"short", year:"numeric"}); };
+        spanLabel.textContent = "📅 กำลังแสดงข้อมูล: " + fmtDate(r.from) + " – " + fmtDate(r.to);
+      }
+    }
+    refreshUI();
+
+    container.querySelectorAll(".range-btn").forEach(function(btn){
       btn.addEventListener("click", function(){
-        document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
+        container.querySelectorAll(".range-btn").forEach(function(b){ b.classList.remove("active"); });
         btn.classList.add("active");
         var now = Date.now();
-        if(btn.dataset.range === "round"){ currentRange = getCurrentRoundRange(); }
-        else if(btn.dataset.range === "today"){ currentRange = {from:startOfDay(now), to:endOfDay(now)}; }
-        else if(btn.dataset.range === "7"){ currentRange = {from:startOfDay(now-6*DAY_MS), to:endOfDay(now)}; }
-        else if(btn.dataset.range === "30"){ currentRange = {from:startOfDay(now-29*DAY_MS), to:endOfDay(now)}; }
-        else { var earliest = orders.reduce(function(m,o){ return Math.min(m,o.createdAt); }, now); currentRange = {from:startOfDay(earliest), to:endOfDay(now)}; }
-        document.getElementById("range-from").value = toDateInputValue(currentRange.from);
-        document.getElementById("range-to").value = toDateInputValue(currentRange.to);
-        renderDashboard();
-        renderCharts();
+        var r;
+        if(btn.dataset.range === "round"){ r = getCurrentRoundRange(); }
+        else if(btn.dataset.range === "today"){ r = {from:startOfDay(now), to:endOfDay(now)}; }
+        else if(btn.dataset.range === "7"){ r = {from:startOfDay(now-6*DAY_MS), to:endOfDay(now)}; }
+        else if(btn.dataset.range === "30"){ r = {from:startOfDay(now-29*DAY_MS), to:endOfDay(now)}; }
+        else { var earliest = orders.reduce(function(m,o){ return Math.min(m,o.createdAt); }, now); r = {from:startOfDay(earliest), to:endOfDay(now)}; }
+        opts.applyRange(r);
+        refreshUI();
+        opts.onChange();
       });
     });
-    document.getElementById("range-from").addEventListener("change", function(){
-      document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
-      currentRange.from = startOfDay(new Date(this.value).getTime());
-      renderDashboard();
-      renderCharts();
+    fromInput.addEventListener("change", function(){
+      container.querySelectorAll(".range-btn").forEach(function(b){ b.classList.remove("active"); });
+      var r = opts.getRange();
+      r.from = startOfDay(new Date(this.value).getTime());
+      opts.applyRange(r);
+      refreshUI();
+      opts.onChange();
     });
-    document.getElementById("range-to").addEventListener("change", function(){
-      document.querySelectorAll(".range-controls .range-btn").forEach(function(b){ b.classList.remove("active"); });
-      currentRange.to = endOfDay(new Date(this.value).getTime());
-      renderDashboard();
-      renderCharts();
+    toInput.addEventListener("change", function(){
+      container.querySelectorAll(".range-btn").forEach(function(b){ b.classList.remove("active"); });
+      var r = opts.getRange();
+      r.to = endOfDay(new Date(this.value).getTime());
+      opts.applyRange(r);
+      refreshUI();
+      opts.onChange();
+    });
+  }
+
+  function initRangeInputs(){
+    setupRangeControl({
+      containerId: "dashboard-range-controls", fromId: "range-from", toId: "range-to", spanLabelId: "range-span-label",
+      getRange: function(){ return currentRange; },
+      applyRange: function(r){ currentRange = r; },
+      onChange: function(){ renderDashboard(); renderCharts(); }
+    });
+    setupRangeControl({
+      containerId: "summary-range-controls", fromId: "summary-range-from", toId: "summary-range-to", spanLabelId: "summary-range-span-label",
+      getRange: function(){ return summaryRange; },
+      applyRange: function(r){ summaryRange = r; },
+      onChange: function(){ renderSummary(); }
+    });
+    setupRangeControl({
+      containerId: "delivery-range-controls", fromId: "delivery-range-from", toId: "delivery-range-to", spanLabelId: "delivery-range-span-label",
+      getRange: function(){ return deliveryRange; },
+      applyRange: function(r){ deliveryRange = r; },
+      onChange: function(){ renderDeliveryList(); renderMapMarkers(); }
     });
   }
   function toDateInputValue(ts){
