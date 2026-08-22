@@ -369,6 +369,12 @@
   .range-controls input[type=date]{width:auto; padding:6px 10px; font-size:12.5px;}
   .chart-grid{display:grid; grid-template-columns:1.5fr 1fr; gap:16px; align-items:start;}
   .chart-box{position:relative; height:280px;}
+  .chart-fallback{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:6px; text-align:center; padding:16px;
+    color:var(--ink-muted); font-size:13px; background:var(--surface-2); border-radius:10px;
+  }
+  .chart-fallback .cf-icon{font-size:26px;}
   .veg-rank-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;}
   .veg-rank-row:last-child{border-bottom:none;}
   .veg-rank-row .rk{width:22px; height:22px; border-radius:50%; background:var(--green-pale); color:var(--green); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
@@ -566,8 +572,8 @@
       <div class="panel">
         <h3>📈 วิเคราะห์ยอดขาย (ตามช่วงที่เลือกด้านบน)</h3>
         <div class="chart-grid">
-          <div class="chart-box"><canvas id="chart-daily"></canvas></div>
-          <div class="chart-box"><canvas id="chart-pie"></canvas></div>
+          <div class="chart-box"><canvas id="chart-daily"></canvas><div class="chart-fallback" id="chart-daily-fallback" style="display:none;"></div></div>
+          <div class="chart-box"><canvas id="chart-veg"></canvas><div class="chart-fallback" id="chart-veg-fallback" style="display:none;"></div></div>
         </div>
         <h3 style="margin-top:20px;">🏆 อันดับผักขายดี (ตามช่วงที่เลือก)</h3>
         <div id="veg-rank-list"></div>
@@ -2286,8 +2292,24 @@
     return d.getFullYear() + "-" + m + "-" + day;
   }
 
+  function showChartFallback(canvasId, fallbackId, html){
+    document.getElementById(canvasId).style.display = "none";
+    var fb = document.getElementById(fallbackId);
+    fb.innerHTML = html;
+    fb.style.display = "flex";
+  }
+  function hideChartFallback(canvasId, fallbackId){
+    document.getElementById(canvasId).style.display = "block";
+    document.getElementById(fallbackId).style.display = "none";
+  }
+
   function renderCharts(){
-    if(typeof Chart === "undefined") return;
+    if(typeof Chart === "undefined"){
+      showChartFallback("chart-daily", "chart-daily-fallback", '<div class="cf-icon">📡</div><div>โหลดกราฟไม่สำเร็จ<br>เช็คการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้อีกครั้ง</div>');
+      showChartFallback("chart-veg", "chart-veg-fallback", '<div class="cf-icon">📡</div><div>โหลดกราฟไม่สำเร็จ<br>เช็คการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้อีกครั้ง</div>');
+      document.getElementById("veg-rank-list").innerHTML = '<div class="empty-note">ไม่สามารถโหลดไลบรารีกราฟได้ (เช็คอินเทอร์เน็ต)</div>';
+      return;
+    }
     var inRange = activeOrders().filter(function(o){ return o.createdAt >= currentRange.from && o.createdAt <= currentRange.to; });
 
     // daily totals
@@ -2300,38 +2322,62 @@
     var dayLabels = dayKeys.map(function(k){ var d = new Date(k); return d.toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit"}); });
     var dayValues = dayKeys.map(function(k){ return dayMap[k]; });
 
-    // per-vegetable totals
+    // per-vegetable totals — driven entirely by order item data (vegName), so historical
+    // sales still show even if that vegetable was later renamed, hidden, or deleted.
     var vegStats = {};
-    vegetables.forEach(function(v){ vegStats[v.id] = {name:v.name, bags:0, kg:0, revenue:0}; });
+    var vegOrder = [];
     inRange.forEach(function(o){
-      var shareRatio = o.total / (o.normalTotalCache || o.total || 1);
       o.items.forEach(function(it){
-        if(!vegStats[it.vegId]) return;
-        vegStats[it.vegId].bags += it.qty;
-        vegStats[it.vegId].kg += it.qty * sizeWeight(it.size);
-        vegStats[it.vegId].revenue += it.subtotal; // display uses list-price revenue share (pre-promo) for clarity
+        if(!vegStats[it.vegName]){ vegStats[it.vegName] = {name: it.vegName, bags:0, kg:0, revenue:0}; vegOrder.push(it.vegName); }
+        vegStats[it.vegName].bags += it.qty;
+        vegStats[it.vegName].kg += it.qty * sizeWeight(it.size);
+        vegStats[it.vegName].revenue += it.subtotal;
       });
     });
-    var vegList = Object.keys(vegStats).map(function(id){ return vegStats[id]; }).filter(function(v){ return v.bags > 0; });
+    var vegList = vegOrder.map(function(k){ return vegStats[k]; });
     vegList.sort(function(a,b){ return b.revenue - a.revenue; });
 
-    var palette = ["#1F4D36","#E8722C","#C9922E","#5B8C6E","#B8402E","#8A9284"];
+    var palette = ["#1F4D36","#E8722C","#C9922E","#5B8C6E","#B8402E","#8A9284","#5B8FBF","#B5638C"];
 
-    if(dailyChart) dailyChart.destroy();
-    var ctx1 = document.getElementById("chart-daily").getContext("2d");
-    dailyChart = new Chart(ctx1, {
-      type: "bar",
-      data: { labels: dayLabels.length ? dayLabels : ["ไม่มีข้อมูล"], datasets: [{ label: "ยอดขายรายวัน (฿)", data: dayValues.length ? dayValues : [0], backgroundColor: "#1F4D36", borderRadius: 4 }] },
-      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, title:{display:true, text:"แนวโน้มยอดขายรายวัน", font:{family:"Prompt"}}}, scales:{ y:{beginAtZero:true, ticks:{font:{family:"Prompt"}}}, x:{ticks:{font:{family:"Prompt"}}} } }
-    });
+    if(dailyChart){ dailyChart.destroy(); dailyChart = null; }
+    if(dayLabels.length === 0){
+      showChartFallback("chart-daily", "chart-daily-fallback", '<div class="cf-icon">🧺</div><div>ไม่มีออเดอร์ในช่วงที่เลือก</div>');
+    } else {
+      hideChartFallback("chart-daily", "chart-daily-fallback");
+      var ctx1 = document.getElementById("chart-daily").getContext("2d");
+      dailyChart = new Chart(ctx1, {
+        type: "bar",
+        data: { labels: dayLabels, datasets: [{ label: "ยอดขายรายวัน (฿)", data: dayValues, backgroundColor: "#1F4D36", borderRadius: 4 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, title:{display:true, text:"แนวโน้มยอดขายรายวัน", font:{family:"Prompt"}}}, scales:{ y:{beginAtZero:true, ticks:{font:{family:"Prompt"}}}, x:{ticks:{font:{family:"Prompt"}}} } }
+      });
+    }
 
-    if(pieChart) pieChart.destroy();
-    var ctx2 = document.getElementById("chart-pie").getContext("2d");
-    pieChart = new Chart(ctx2, {
-      type: "pie",
-      data: { labels: vegList.length ? vegList.map(function(v){return v.name;}) : ["ไม่มีข้อมูล"], datasets: [{ data: vegList.length ? vegList.map(function(v){return v.revenue;}) : [1], backgroundColor: palette }] },
-      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{font:{family:"Prompt"}}}, title:{display:true, text:"สัดส่วนยอดขายตามชนิดผัก", font:{family:"Prompt"}}} }
-    });
+    if(pieChart){ pieChart.destroy(); pieChart = null; }
+    if(vegList.length === 0){
+      showChartFallback("chart-veg", "chart-veg-fallback", '<div class="cf-icon">🥬</div><div>ไม่มีออเดอร์ในช่วงที่เลือก</div>');
+    } else {
+      hideChartFallback("chart-veg", "chart-veg-fallback");
+      var ctx2 = document.getElementById("chart-veg").getContext("2d");
+      pieChart = new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels: vegList.map(function(v){ return v.name; }),
+          datasets: [{ label: "ยอดขาย (฿)", data: vegList.map(function(v){ return v.revenue; }), backgroundColor: vegList.map(function(v,i){ return palette[i % palette.length]; }), borderRadius: 4 }]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false, indexAxis:"y",
+          plugins:{
+            legend:{display:false},
+            title:{display:true, text:"ยอดขายแยกตามชนิดผัก", font:{family:"Prompt"}},
+            tooltip:{ callbacks:{ label: function(ctx){
+              var v = vegList[ctx.dataIndex];
+              return v.bags + " ถุง · " + v.kg.toLocaleString("th-TH",{maximumFractionDigits:2}) + " กก. · " + money(v.revenue);
+            } } }
+          },
+          scales:{ x:{beginAtZero:true, ticks:{font:{family:"Prompt"}}}, y:{ticks:{font:{family:"Prompt"}}} }
+        }
+      });
+    }
 
     var rankWrap = document.getElementById("veg-rank-list");
     if(vegList.length === 0){
