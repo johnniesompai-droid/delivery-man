@@ -688,8 +688,7 @@
       <div id="sub-stock" style="display:none;">
         <div class="panel">
           <h3>📦 ราคา &amp; สต๊อคผักแต่ละชนิด/ขนาด</h3>
-          <p class="hint" style="margin-bottom:6px;">💡 ช่อง "สต๊อคทั้งหมด" เว้นว่างไว้ได้ถ้ายังไม่ทราบ — ระบบจะให้รับออเดอร์ได้ตามปกติ พอกรอกจำนวนจริงเมื่อไหร่ ระบบจะคำนวณให้ทันทีว่าเหลือหรือขาดกี่ถุง</p>
-          <p class="hint" id="stock-range-hint" style="margin-bottom:12px; color:var(--carrot); font-weight:600;"></p>
+          <p class="hint" style="margin-bottom:12px;">💡 ช่อง "สต๊อคทั้งหมด" เว้นว่างไว้ได้ถ้ายังไม่ทราบ — ระบบจะให้รับออเดอร์ได้ตามปกติ พอกรอกจำนวนจริงเมื่อไหร่ ระบบจะคำนวณให้ทันทีว่าเหลือหรือขาดกี่ถุง</p>
           <div class="stock-controls">
             <button class="btn btn-ghost btn-sm" id="btn-add-veg">+ เพิ่มชนิดผัก</button>
             <button class="btn btn-danger-ghost btn-sm" id="btn-clear-stock" title="ล้างช่องสต๊อคทั้งหมดของผักทุกชนิด (ราคา/โปรโมชั่นไม่หาย)">🧹 เคลียร์สต๊อค</button>
@@ -972,23 +971,21 @@
   function totalOrderedBags(vegId, size){
     var total = 0;
     activeOrders().forEach(function(o){
-      if(o.createdAt < currentRange.from || o.createdAt > currentRange.to) return;
       o.items.forEach(function(it){ if(it.vegId === vegId && it.size === size){ total += it.qty; } });
     });
     return total;
   }
   function computeStockInfo(v, sz){
     var s = v.sizes[sz];
-    var ordered = totalOrderedBags(v.id, sz);
     if(s.stock === null || typeof s.stock === "undefined"){
-      var subLabel = ordered > 0 ? ("รับออเดอร์แล้ว " + ordered + " ถุง") : "ยังไม่มีออเดอร์";
-      return {mode:"unknown", ordered:ordered, remaining:null, label:"ยังไม่ระบุสต๊อค", sub:subLabel, cls:"stock-unknown"};
+      return {mode:"unknown", remaining:null, label:"ยังไม่ระบุสต๊อค", cls:"stock-unknown"};
     }
+    var ordered = totalOrderedBags(v.id, sz);
     var remaining = s.stock - ordered;
-    if(remaining < 0) return {mode:"shortage", ordered:ordered, remaining:remaining, label:"ขาด " + Math.abs(remaining) + " ถุง", sub:"", cls:"stock-out"};
-    if(remaining === 0) return {mode:"out", ordered:ordered, remaining:remaining, label:"หมดพอดี", sub:"", cls:"stock-out"};
-    if(remaining <= LOW_STOCK_THRESHOLD) return {mode:"low", ordered:ordered, remaining:remaining, label:"เหลือ " + remaining + " ถุง", sub:"", cls:"stock-low"};
-    return {mode:"ok", ordered:ordered, remaining:remaining, label:"เหลือ " + remaining + " ถุง", sub:"", cls:""};
+    if(remaining < 0) return {mode:"shortage", ordered:ordered, remaining:remaining, label:"ขาด " + Math.abs(remaining) + " ถุง", cls:"stock-out"};
+    if(remaining === 0) return {mode:"out", ordered:ordered, remaining:remaining, label:"หมดพอดี", cls:"stock-out"};
+    if(remaining <= LOW_STOCK_THRESHOLD) return {mode:"low", ordered:ordered, remaining:remaining, label:"เหลือ " + remaining + " ถุง", cls:"stock-low"};
+    return {mode:"ok", ordered:ordered, remaining:remaining, label:"เหลือ " + remaining + " ถุง", cls:""};
   }
   function haversine(lat1,lon1,lat2,lon2){
     var R = 6371000;
@@ -1116,13 +1113,6 @@
 
   // ---------- stock table ----------
   function renderStockTable(){
-    var rangeHintEl = document.getElementById("stock-range-hint");
-    if(rangeHintEl){
-      var fmtDate = function(ts){ return new Date(ts).toLocaleDateString("th-TH", {day:"numeric", month:"short", year:"numeric"}); };
-      var activeBtn = document.querySelector('#dashboard-range-controls .range-btn.active');
-      var rangeName = activeBtn ? activeBtn.textContent.trim() : "";
-      rangeHintEl.textContent = "🗓️ ตัวเลข \"รับออเดอร์แล้ว\" และ \"ขาด/เหลือ\" นับเฉพาะช่วง " + (rangeName ? rangeName + " (" : "(") + fmtDate(currentRange.from) + " – " + fmtDate(currentRange.to) + ") ตามที่เลือกไว้ในหน้าแดชบอร์ด — เปลี่ยนช่วงเวลาได้ที่นั่น";
-    }
     var body = document.getElementById("stock-table-body");
     var rows = [];
     var VEG_PALETTE = ["#4C8C6B","#D98A3D","#5B8FBF","#B5638C","#8A9C3E","#4CA8A0","#C25B5B","#6D6DBF"];
@@ -1156,7 +1146,7 @@
           nameCell + '<td' + sizeCellStyle + '><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
           '<td><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
-          '<td><span class="stock-status-text mode-' + info.mode + '">' + info.label + '</span>' + (info.sub ? '<div style="font-size:10.5px; color:var(--ink-muted); font-weight:400;">' + info.sub + '</div>' : '') + '</td>' +
+          '<td><span class="stock-status-text mode-' + info.mode + '">' + info.label + '</span></td>' +
           '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td>' +
           '<td><button type="button" class="del-size-btn" data-veg="' + v.id + '" data-size="' + sz + '" title="ลบขนาดนี้">✕</button></td></tr>');
       });
@@ -2313,7 +2303,7 @@
       containerId: "dashboard-range-controls", fromId: "range-from", toId: "range-to", spanLabelId: "range-span-label",
       getRange: function(){ return currentRange; },
       applyRange: function(r){ currentRange = r; },
-      onChange: function(){ renderDashboard(); renderCharts(); renderStockTable(); }
+      onChange: function(){ renderDashboard(); renderCharts(); }
     });
     setupRangeControl({
       containerId: "summary-range-controls", fromId: "summary-range-from", toId: "summary-range-to", spanLabelId: "summary-range-span-label",
