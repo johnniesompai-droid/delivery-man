@@ -706,7 +706,7 @@
             <button class="btn btn-ghost btn-sm" id="cancel-add-size">ยกเลิก</button>
           </div>
           <table>
-            <thead><tr><th>ชนิดผัก</th><th>ขนาดถุง</th><th>ราคา (฿)</th><th>สต๊อคทั้งหมด</th><th>สถานะ</th><th>โปรโมชั่น</th><th></th></tr></thead>
+            <thead><tr><th>ชนิดผัก</th><th>ขนาดถุง</th><th>ราคา (฿)</th><th>สต๊อคทั้งหมด</th><th>โปรโมชั่น</th><th></th></tr></thead>
             <tbody id="stock-table-body"></tbody>
           </table>
         </div>
@@ -1124,18 +1124,17 @@
       if(!v.sizes) v.sizes = {};
       var sizeKeys = vegSizeKeys(v);
       if(v.hidden){
-        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
+        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="6" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
           '<div class="veg-btns"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       if(sizeKeys.length === 0){
-        rows.push('<tr data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="7" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
+        rows.push('<tr data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="6" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
           '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       sizeKeys.forEach(function(sz, idx){
         var s = v.sizes[sz];
-        var info = computeStockInfo(v, sz);
         var nameCell = idx === 0
           ? '<td rowspan="' + sizeKeys.length + '" style="max-width:120px; border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
             '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td>'
@@ -1146,12 +1145,11 @@
           nameCell + '<td' + sizeCellStyle + '><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
           '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
           '<td><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
-          '<td><span class="stock-status-text mode-' + info.mode + '">' + info.label + '</span></td>' +
           '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td>' +
           '<td><button type="button" class="del-size-btn" data-veg="' + v.id + '" data-size="' + sz + '" title="ลบขนาดนี้">✕</button></td></tr>');
       });
     });
-    body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="7"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
+    body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="6"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
     body.querySelectorAll(".size-input").forEach(function(inp){
       inp.addEventListener("change", function(){
         var oldSize = inp.dataset.size;
