@@ -650,10 +650,10 @@
   html.dm-glass .sidebar-footer .clock-corner{display:none;}
   html.dm-glass .sidebar-footer .gps-chip{flex:1; min-width:0; margin:0 !important; font-size:11px; padding:6px 8px; gap:6px;}
   html.dm-glass .sidebar-footer .gps-chip span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  html.dm-glass .content{padding-top:18px; padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px)); padding-left:calc(22px + env(safe-area-inset-left, 0px)); padding-right:calc(22px + env(safe-area-inset-right, 0px));}
+  html.dm-glass .content{padding-top:18px; padding-bottom:calc(100px + env(safe-area-inset-bottom, 0px)); padding-left:calc(22px + env(safe-area-inset-left, 0px)); padding-right:calc(22px + env(safe-area-inset-right, 0px));}
   html.dm-glass .page-head{padding-right:0;}
-  html.dm-glass .toast{bottom:calc(104px + env(safe-area-inset-bottom, 0px));}
-  html.dm-glass .install-btn{position:fixed; right:14px; bottom:calc(100px + env(safe-area-inset-bottom, 0px)) !important; z-index:900; margin:0; box-shadow:0 4px 14px rgba(0,0,0,0.25); border-radius:999px; padding:10px 16px;}
+  html.dm-glass .toast{bottom:calc(84px + max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px)));}
+  html.dm-glass .install-btn{position:fixed; right:14px; bottom:calc(84px + max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px))) !important; z-index:900; margin:0; box-shadow:0 4px 14px rgba(0,0,0,0.25); border-radius:999px; padding:10px 16px;}
   @media (min-width: 881px){
     html.dm-glass .sidebar-footer{width:auto; padding:0; flex:0 0 auto;}
     html.dm-glass .sidebar-footer .gps-chip{flex:0 0 auto;}
@@ -663,7 +663,7 @@
     html.dm-glass .gt-tab{font-size:11.5px;}
   }
   html.dm-glass .glass-tabbar{
-    display:flex; position:fixed; left:50%; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); z-index:1500;
+    display:flex; position:fixed; left:50%; bottom:max(8px, calc(env(safe-area-inset-bottom, 0px) - 14px)); z-index:1500;
     width:min(calc(100% - 28px), 430px); height:68px; padding:6px; border-radius:36px; box-sizing:border-box;
     transform:translateX(-50%);
     background:linear-gradient(140deg, rgba(255,255,255,0.62), rgba(255,255,255,0.26));
@@ -694,7 +694,7 @@
   html.dm-glass .gt-tab.active svg{transform:translateY(-1px) scale(1.06);}
   html.dm-glass .gt-tab.hover{color:var(--carrot);}
   html.dm-glass .gt-tab.pop svg{animation:gtPop .5s cubic-bezier(.34,1.8,.5,1);}
-  html.dm-glass .glass-tabbar.compact{width:min(calc(100% - 90px), 300px); height:52px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); border-radius:28px;}
+  html.dm-glass .glass-tabbar.compact{width:min(calc(100% - 90px), 300px); height:52px; bottom:max(6px, calc(env(safe-area-inset-bottom, 0px) - 18px)); border-radius:28px;}
   html.dm-glass .glass-tabbar.compact .gt-lb{opacity:0; max-height:0;}
   html.dm-glass .glass-tabbar.compact .gt-lens{top:5px; height:calc(100% - 10px); border-radius:24px;}
   html.dm-glass .glass-tabbar.compact .gt-tab svg{width:23px; height:23px;}
@@ -704,9 +704,12 @@
 (function(){
   var root = document.documentElement;
   function glassOn(){
-    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    var touch = window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-    return window.innerWidth <= 880 || ios || touch;
+    var ua = navigator.userAgent || "", plat = navigator.platform || "";
+    var ios = /iphone|ipad|ipod/i.test(ua + " " + plat);
+    // iPadOS Safari / installed app reports a Mac-style identity but has a multi-touch screen (real Macs report 0 touch points)
+    var ipadAsMac = /mac/i.test(ua + " " + plat) && navigator.maxTouchPoints > 1;
+    var touch = window.matchMedia && (window.matchMedia("(hover: none) and (pointer: coarse)").matches || window.matchMedia("(any-hover: none)").matches);
+    return window.innerWidth <= 880 || ios || ipadAsMac || touch;
   }
   function apply(){ root.classList.toggle("dm-glass", glassOn()); }
   apply(); window.addEventListener("resize", apply); window.addEventListener("orientationchange", apply);
@@ -2532,7 +2535,7 @@
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById("btn-install");
   function isStandaloneMode(){ return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true; }
-  function isIOSDevice(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+  function isIOSDevice(){ var ua = (navigator.userAgent || "") + " " + (navigator.platform || ""); return /iphone|ipad|ipod/i.test(ua) || (/mac/i.test(ua) && navigator.maxTouchPoints > 1); }
   function showInstallHelp(){
     var old = document.getElementById("info-modal"); if(old) old.remove();
     var ios = isIOSDevice();
