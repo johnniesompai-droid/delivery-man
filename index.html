@@ -521,6 +521,12 @@
   }
   .content{padding-bottom:calc(18px + env(safe-area-inset-bottom));}
 
+  .dot.warn{background:#E8A23C; box-shadow:0 0 0 3px rgba(232,162,60,0.25);}
+  .login-overlay{position:fixed; inset:0; background:var(--bg, #EEF2E9); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .login-card{background:#fff; border-radius:16px; padding:24px; width:100%; max-width:360px; box-shadow:0 12px 40px rgba(0,0,0,0.18);}
+  .login-card label{display:block; font-size:13px; font-weight:500; margin:0 0 4px;}
+  .login-card input{width:100%;}
+
   .toast{
     position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
     background:var(--green); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px;
@@ -561,11 +567,13 @@
       <button class="nav-btn" data-page="orders"><span class="ic">📝</span> รับออเดอร์</button>
       <button class="nav-btn" data-page="summary"><span class="ic">📦</span> สรุปออเดอร์</button>
       <button class="nav-btn" data-page="delivery"><span class="ic">🗺️</span> จัดส่ง</button>
+      <button class="nav-btn" data-page="data"><span class="ic">☁️</span> ข้อมูล &amp; ซิงก์</button>
     </nav>
     <button class="install-btn" id="btn-install" type="button">📲 ติดตั้งเป็นแอพ</button>
     <div class="sidebar-footer">
       <div class="clock-corner"><div class="c-date" id="clock-date">-</div><div class="c-time" id="clock-time">--:--:--</div></div>
       <div class="gps-chip"><span class="dot" id="dm-gps-dot"></span> <span id="dm-gps-label">GPS ยังไม่เปิด</span></div>
+      <div class="gps-chip" style="margin-top:6px;"><span class="dot" id="dm-cloud-dot"></span> <span id="dm-cloud-label">-</span></div>
     </div>
   </aside>
 
@@ -801,10 +809,53 @@
       </div>
     </section>
 
+    <!-- ============ DATA / SYNC ============ -->
+    <section class="page" id="page-data">
+      <div class="page-head">
+        <h2>ข้อมูล &amp; ซิงก์</h2>
+        <p>สำรองข้อมูล นำเข้าข้อมูล และดูสถานะการซิงก์ข้ามเครื่อง</p>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0;">☁️ สถานะคลาวด์</h3>
+        <div class="gps-chip" style="background:var(--surface-2); color:var(--ink); max-width:420px;"><span class="dot" id="dp-status-dot"></span> <span id="dp-status">-</span></div>
+        <p class="hint" id="dp-account" style="margin-top:8px;"></p>
+        <button class="btn btn-ghost" id="btn-logout" style="display:none; margin-top:8px;">ออกจากระบบ</button>
+        <div id="dp-setup" class="hint" style="margin-top:10px; display:none;">ยังไม่ได้ตั้งค่า Firebase — ข้อมูลเก็บเฉพาะในเครื่องนี้ (ดูวิธีตั้งค่าในไฟล์ README.md และใส่ค่าในไฟล์ <b>firebase-config.js</b>)</div>
+      </div>
+      <div class="panel" style="margin-top:14px;">
+        <h3 style="margin-top:0;">💾 สำรองข้อมูล</h3>
+        <p class="hint" style="margin-bottom:10px;">บันทึกออเดอร์และรายการผักทั้งหมดเป็นไฟล์ .json เก็บไว้กันข้อมูลหาย หรือใช้ย้ายข้อมูลไปเครื่องอื่น</p>
+        <button class="btn btn-primary" id="btn-backup">💾 สำรองข้อมูล</button>
+      </div>
+      <div class="panel" style="margin-top:14px;">
+        <h3 style="margin-top:0;">📥 นำเข้าข้อมูล</h3>
+        <p class="hint" style="margin-bottom:10px;">เลือกไฟล์สำรอง (.json) ที่เคยบันทึกไว้ — "รวม" จะเพิ่มข้อมูลจากไฟล์เข้าไป ส่วน "แทนที่ทั้งหมด" จะลบข้อมูลปัจจุบันแล้วใช้ข้อมูลในไฟล์แทน</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button class="btn btn-primary" id="btn-import-merge">📥 นำเข้า (รวมข้อมูล)</button>
+          <button class="btn btn-ghost" id="btn-import-replace">⚠️ นำเข้า (แทนที่ทั้งหมด)</button>
+        </div>
+        <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
+      </div>
+    </section>
+
   </main>
 </div>
 
 <div class="toast" id="dm-toast"></div>
+<div class="login-overlay" id="login-overlay" style="display:none;">
+  <form class="login-card" id="login-form">
+    <div class="logo-mark" style="font-size:38px; text-align:center;">🥬</div>
+    <h2 style="text-align:center; margin:4px 0 2px; color:var(--green);">Delivery Man</h2>
+    <p class="hint" style="text-align:center; margin-bottom:14px;">เข้าสู่ระบบเพื่อซิงก์ข้อมูลทุกเครื่อง</p>
+    <label>อีเมล</label>
+    <input type="email" id="login-email" autocomplete="username" required>
+    <label style="margin-top:10px;">รหัสผ่าน</label>
+    <input type="password" id="login-pass" autocomplete="current-password" required>
+    <p id="login-error" style="color:#B8402E; font-size:13px; min-height:18px; margin:10px 0 0;"></p>
+    <button type="submit" class="btn btn-primary" id="login-submit" style="width:100%; justify-content:center; margin-top:6px;">เข้าสู่ระบบ</button>
+  </form>
+</div>
+
 <div class="page-scroll-track" id="page-scroll-track"><div class="page-scroll-thumb" id="page-scroll-thumb"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -880,6 +931,38 @@
     });
   }
 
+  function normalizeData(){
+    // migrate old vegetable records — each vegetable keeps only its own sizes now (no forced global list)
+    vegetables.forEach(function(v){
+      if(typeof v.hidden === "undefined") v.hidden = false;
+      if(!v.sizes) v.sizes = {};
+      Object.keys(v.sizes).forEach(function(sz){
+        var s = v.sizes[sz];
+        if(typeof s.promo === "undefined") s.promo = false;
+        if(typeof s.unknownStock !== "undefined"){
+          // old model: unknownStock flag + a running (auto-decremented) stock number.
+          // new model: stock is either null (not yet counted) or a fixed total, compared live against orders.
+          if(s.unknownStock){
+            s.stock = null;
+          } else {
+            var orderedSoFar = totalOrderedBags(v.id, sz);
+            s.stock = (typeof s.stock === "number" ? s.stock : 0) + orderedSoFar;
+          }
+          delete s.unknownStock;
+        } else if(typeof s.stock === "undefined"){
+          s.stock = null;
+        }
+      });
+    });
+    // migrate old orders that lack new fields
+    orders.forEach(function(o){
+      if(typeof o.cancelled === "undefined") o.cancelled = false;
+      if(typeof o.deliveredAt === "undefined") o.deliveredAt = null;
+      if(typeof o.discount === "undefined") o.discount = 0;
+      if(typeof o.promoApplied === "undefined") o.promoApplied = false;
+    });
+  }
+
   // ---------- storage ----------
   function loadAll(){
     Promise.all([
@@ -890,43 +973,17 @@
       catch(e){ vegetables = JSON.parse(JSON.stringify(DEFAULT_VEGETABLES)); }
       try{ orders = res[1] ? JSON.parse(res[1].value) : []; }
       catch(e){ orders = []; }
-      // migrate old vegetable records — each vegetable keeps only its own sizes now (no forced global list)
-      vegetables.forEach(function(v){
-        if(typeof v.hidden === "undefined") v.hidden = false;
-        if(!v.sizes) v.sizes = {};
-        Object.keys(v.sizes).forEach(function(sz){
-          var s = v.sizes[sz];
-          if(typeof s.promo === "undefined") s.promo = false;
-          if(typeof s.unknownStock !== "undefined"){
-            // old model: unknownStock flag + a running (auto-decremented) stock number.
-            // new model: stock is either null (not yet counted) or a fixed total, compared live against orders.
-            if(s.unknownStock){
-              s.stock = null;
-            } else {
-              var orderedSoFar = totalOrderedBags(v.id, sz);
-              s.stock = (typeof s.stock === "number" ? s.stock : 0) + orderedSoFar;
-            }
-            delete s.unknownStock;
-          } else if(typeof s.stock === "undefined"){
-            s.stock = null;
-          }
-        });
-      });
-      // migrate old orders that lack new fields
-      orders.forEach(function(o){
-        if(typeof o.cancelled === "undefined") o.cancelled = false;
-        if(typeof o.deliveredAt === "undefined") o.deliveredAt = null;
-        if(typeof o.discount === "undefined") o.discount = 0;
-        if(typeof o.promoApplied === "undefined") o.promoApplied = false;
-      });
+      normalizeData();
       afterLoad();
     });
   }
   function saveVegetables(){
     storeSet("dm-vegetables", JSON.stringify(vegetables)).catch(function(){ toast("บันทึกสต๊อคไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+    if(typeof cloudPushVegetables === "function") cloudPushVegetables();
   }
   function saveOrders(){
     storeSet("dm-orders", JSON.stringify(orders)).catch(function(){ toast("บันทึกออเดอร์ไม่สำเร็จ ลองใหม่อีกครั้ง"); });
+    if(typeof cloudPushOrders === "function") cloudPushOrders();
   }
 
   function afterLoad(){
@@ -2637,8 +2694,250 @@
     }
   }
 
+  // ---------- data page: backup / import ----------
+  function pad2(n){ return (n < 10 ? "0" : "") + n; }
+  function backupFileName(){ var d = new Date(); return "delivery-man-backup-" + d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + ".json"; }
+  function buildBackup(){ return JSON.stringify({app:"delivery-man", version:1, exportedAt:Date.now(), vegetables:vegetables, orders:orders}, null, 1); }
+  document.getElementById("btn-backup").addEventListener("click", function(){
+    var file = new File([buildBackup()], backupFileName(), {type:"application/json"});
+    if(isIOSDevice() && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file], title:"สำรองข้อมูล Delivery Man"}).catch(function(err){ if(err && err.name !== "AbortError"){ toast("แชร์ไม่สำเร็จ"); } });
+      return;
+    }
+    downloadShareFiles([file]);
+    toast("กำลังบันทึกไฟล์สำรองข้อมูล");
+  });
+  var importMode = "merge";
+  var importFileInput = document.getElementById("import-file");
+  document.getElementById("btn-import-merge").addEventListener("click", function(){ importMode = "merge"; importFileInput.value = ""; importFileInput.click(); });
+  document.getElementById("btn-import-replace").addEventListener("click", function(){ importMode = "replace"; importFileInput.value = ""; importFileInput.click(); });
+  importFileInput.addEventListener("change", function(){
+    var f = importFileInput.files && importFileInput.files[0];
+    if(!f) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var data;
+      try{ data = JSON.parse(reader.result); }catch(e){ toast("ไฟล์ไม่ถูกต้อง (อ่านไม่ได้)"); return; }
+      if(!data || !Array.isArray(data.orders) || !Array.isArray(data.vegetables)){ toast("ไฟล์นี้ไม่ใช่ไฟล์สำรองของ Delivery Man"); return; }
+      var msg = "ไฟล์นี้มี " + data.orders.length + " ออเดอร์ และ " + data.vegetables.length + " ชนิดผัก\n\n" +
+        (importMode === "replace" ? "โหมดแทนที่ทั้งหมด: ข้อมูลปัจจุบันจะถูกลบและแทนด้วยข้อมูลในไฟล์ (ถ้าเชื่อมคลาวด์ไว้ ทุกเครื่องจะเปลี่ยนตาม)\n\nต้องการทำต่อไหม?" : "โหมดรวมข้อมูล: เพิ่มออเดอร์จากไฟล์เข้าไป (ออเดอร์ที่มีรหัสเดียวกันจะถูกแทนที่ด้วยข้อมูลในไฟล์)\n\nต้องการทำต่อไหม?");
+      if(!confirm(msg)) return;
+      if(importMode === "replace"){
+        vegetables = data.vegetables; orders = data.orders;
+      } else {
+        var oMap = {}; orders.forEach(function(o){ oMap[o.id] = o; });
+        data.orders.forEach(function(o){ oMap[o.id] = o; });
+        orders = Object.keys(oMap).map(function(k){ return oMap[k]; });
+        var vMap = {}; vegetables.forEach(function(v){ vMap[v.id] = v; });
+        data.vegetables.forEach(function(v){ vMap[v.id] = v; });
+        vegetables = Object.keys(vMap).map(function(k){ return vMap[k]; });
+      }
+      normalizeData();
+      saveVegetables(); saveOrders();
+      renderStockTable(); resetItemRows(); renderDashboard(); renderSummary(); renderDeliveryList();
+      try{ renderMapMarkers(); }catch(e){}
+      try{ renderCharts(); }catch(e){}
+      toast("นำเข้าข้อมูลเรียบร้อย: " + orders.length + " ออเดอร์");
+    };
+    reader.onerror = function(){ toast("อ่านไฟล์ไม่สำเร็จ"); };
+    reader.readAsText(f);
+  });
+
+  // ---------- cloud sync (Firebase Auth + Firestore) ----------
+  var cloud = {on:false, db:null, auth:null, user:null, ready:false, lastOrders:{}, lastVegJson:null, unsubs:[], pendingPush:false, state:"local"};
+  function stableStringify(v){
+    if(Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
+    if(v && typeof v === "object") return "{" + Object.keys(v).sort().map(function(k){ return JSON.stringify(k) + ":" + stableStringify(v[k]); }).join(",") + "}";
+    return JSON.stringify(v);
+  }
+  function cleanForCloud(o){ return JSON.parse(JSON.stringify(o)); }
+  function setCloudStatus(state, extra){
+    cloud.state = state;
+    var map = {
+      local:     {t:"ยังไม่เชื่อมคลาวด์ (เก็บในเครื่องนี้)", c:""},
+      signedout: {t:"ยังไม่ได้เข้าสู่ระบบ", c:""},
+      syncing:   {t:"กำลังซิงก์...", c:"warn"},
+      synced:    {t:"ซิงก์กับคลาวด์แล้ว", c:"live"},
+      offline:   {t:"ออฟไลน์ — จะซิงก์เมื่อมีสัญญาณ", c:"warn"}
+    };
+    var m = map[state] || map.local;
+    var label = document.getElementById("dm-cloud-label"), dot = document.getElementById("dm-cloud-dot");
+    if(label) label.textContent = m.t;
+    if(dot) dot.className = "dot" + (m.c ? " " + m.c : "");
+    var pg = document.getElementById("dp-status"); if(pg) pg.textContent = m.t + (extra ? " " + extra : "");
+    var pd = document.getElementById("dp-status-dot"); if(pd) pd.className = "dot" + (m.c ? " " + m.c : "");
+  }
+  function updateDataPage(){
+    var acc = document.getElementById("dp-account"), lo = document.getElementById("btn-logout"), setup = document.getElementById("dp-setup");
+    if(acc) acc.textContent = cloud.user ? ("เข้าสู่ระบบเป็น: " + cloud.user.email) : "";
+    if(lo) lo.style.display = cloud.user ? "inline-flex" : "none";
+    if(setup) setup.style.display = cloud.on ? "none" : "block";
+  }
+  function cloudConfigured(){ var c = window.DM_FIREBASE_CONFIG; return !!(c && c.apiKey && c.projectId && String(c.apiKey).indexOf("PASTE") !== 0 && typeof firebase !== "undefined"); }
+  function loadScriptOnce(src){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement("script"); s.src = src; s.onload = resolve; s.onerror = function(){ reject(new Error("load " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function bootCloud(){
+    setCloudStatus("local"); updateDataPage();
+    loadScriptOnce("firebase-config.js").catch(function(){}).then(function(){
+      var c = window.DM_FIREBASE_CONFIG;
+      if(!(c && c.apiKey && String(c.apiKey).indexOf("PASTE") !== 0)) return;
+      var base = "https://www.gstatic.com/firebasejs/10.12.2/";
+      return loadScriptOnce(base + "firebase-app-compat.js")
+        .then(function(){ return loadScriptOnce(base + "firebase-auth-compat.js"); })
+        .then(function(){ return loadScriptOnce(base + "firebase-firestore-compat.js"); })
+        .then(initCloud);
+    }).catch(function(){ setCloudStatus("local"); toast("โหลดระบบซิงก์ไม่สำเร็จ — ใช้ข้อมูลในเครื่องไปก่อน"); });
+  }
+  function initCloud(){
+    if(!cloudConfigured()) return;
+    cloud.on = true;
+    firebase.initializeApp(window.DM_FIREBASE_CONFIG);
+    cloud.auth = firebase.auth(); cloud.db = firebase.firestore();
+    try{ cloud.db.enablePersistence({synchronizeTabs:true}).catch(function(){}); }catch(e){}
+    setCloudStatus("signedout"); updateDataPage();
+    cloud.auth.onAuthStateChanged(function(user){
+      cloud.user = user; updateDataPage();
+      if(user){ hideLogin(); startCloudSync(); }
+      else { stopCloudSync(); setCloudStatus("signedout"); showLogin(); }
+    });
+  }
+  function showLogin(){ var l = document.getElementById("login-overlay"); if(l) l.style.display = "flex"; }
+  function hideLogin(){ var l = document.getElementById("login-overlay"); if(l) l.style.display = "none"; var e = document.getElementById("login-error"); if(e) e.textContent = ""; }
+  function loginErrorText(err){
+    var code = err && err.code || "";
+    if(code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found" || code === "auth/invalid-email") return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+    if(code === "auth/too-many-requests") return "ลองผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่";
+    if(code === "auth/network-request-failed") return "เชื่อมต่ออินเทอร์เน็ตไม่ได้ ลองใหม่อีกครั้ง";
+    return "เข้าสู่ระบบไม่สำเร็จ (" + (code || "unknown") + ")";
+  }
+  document.getElementById("login-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    if(!cloud.auth) return;
+    var btn = document.getElementById("login-submit"), err = document.getElementById("login-error");
+    btn.disabled = true; err.textContent = "";
+    cloud.auth.signInWithEmailAndPassword(document.getElementById("login-email").value.trim(), document.getElementById("login-pass").value)
+      .catch(function(ex){ err.textContent = loginErrorText(ex); })
+      .then(function(){ btn.disabled = false; });
+  });
+  document.getElementById("btn-logout").addEventListener("click", function(){
+    if(cloud.auth && confirm("ออกจากระบบ? ข้อมูลที่ซิงก์แล้วยังอยู่บนคลาวด์")) cloud.auth.signOut();
+  });
+  function cacheLocal(){
+    storeSet("dm-vegetables", JSON.stringify(vegetables)).catch(function(){});
+    storeSet("dm-orders", JSON.stringify(orders)).catch(function(){});
+  }
+  function refreshFromRemote(){
+    try{ renderDashboard(); renderSummary(); renderDeliveryList(); }catch(e){}
+    var ae = document.activeElement;
+    var stockBusy = ae && ae.closest && ae.closest("#sub-stock") && /INPUT|SELECT|TEXTAREA/.test(ae.tagName);
+    if(!stockBusy){ try{ renderStockTable(); }catch(e){} }
+    try{ renderMapMarkers(); }catch(e){}
+    try{ renderCharts(); }catch(e){}
+  }
+  function commitInChunks(ops){
+    var chunks = []; for(var i = 0; i < ops.length; i += 400){ chunks.push(ops.slice(i, i + 400)); }
+    return Promise.all(chunks.map(function(ch){
+      var batch = cloud.db.batch();
+      ch.forEach(function(op){ if(op.del) batch.delete(op.ref); else batch.set(op.ref, op.data); });
+      return batch.commit();
+    }));
+  }
+  function cloudPushOrders(){
+    if(!cloud.on || !cloud.user) return;
+    if(!cloud.ready){ cloud.pendingPush = true; return; }
+    var ops = [], seen = {};
+    orders.forEach(function(o){
+      var clean = cleanForCloud(o), s = stableStringify(clean), id = String(o.id);
+      seen[id] = true;
+      if(cloud.lastOrders[id] !== s){ ops.push({ref:cloud.db.collection("dm_orders").doc(id), data:clean}); cloud.lastOrders[id] = s; }
+    });
+    Object.keys(cloud.lastOrders).forEach(function(id){
+      if(!seen[id]){ ops.push({ref:cloud.db.collection("dm_orders").doc(id), del:true}); delete cloud.lastOrders[id]; }
+    });
+    if(!ops.length) return;
+    setCloudStatus("syncing");
+    commitInChunks(ops).catch(function(){ toast("ซิงก์ออเดอร์ขึ้นคลาวด์ไม่สำเร็จ ระบบจะลองใหม่เมื่อมีสัญญาณ"); });
+  }
+  function cloudPushVegetables(){
+    if(!cloud.on || !cloud.user) return;
+    if(!cloud.ready){ cloud.pendingPush = true; return; }
+    var json = JSON.stringify(vegetables);
+    if(json === cloud.lastVegJson) return;
+    cloud.lastVegJson = json;
+    setCloudStatus("syncing");
+    cloud.db.collection("dm_meta").doc("vegetables").set({json:json, updatedAt:Date.now()}).catch(function(){ toast("ซิงก์สต๊อคขึ้นคลาวด์ไม่สำเร็จ ระบบจะลองใหม่เมื่อมีสัญญาณ"); });
+  }
+  function stopCloudSync(){ cloud.unsubs.forEach(function(u){ try{ u(); }catch(e){} }); cloud.unsubs = []; cloud.ready = false; cloud.lastOrders = {}; cloud.lastVegJson = null; }
+  function startCloudSync(){
+    stopCloudSync(); setCloudStatus("syncing");
+    var gotOrders = false, gotVeg = false;
+    function maybeReady(){
+      if(!(gotOrders && gotVeg) || cloud.ready) return;
+      cloud.ready = true;
+      try{ localStorage.setItem("dm-cloud-linked", "1"); }catch(e){}
+      if(cloud.pendingPush){ cloud.pendingPush = false; cloudPushVegetables(); cloudPushOrders(); }
+      setCloudStatus(navigator.onLine === false ? "offline" : "synced");
+    }
+    var linked = false; try{ linked = localStorage.getItem("dm-cloud-linked") === "1"; }catch(e){}
+    var meta = {orders:null, veg:undefined};
+    // first-time linking needs both server answers before deciding how to merge local data
+    var firstLinkDone = linked;
+    function tryFirstLink(){
+      if(firstLinkDone || meta.orders === null || meta.veg === undefined) return;
+      firstLinkDone = true;
+      var cloudIds = {}; meta.orders.forEach(function(o){ cloudIds[String(o.id)] = true; });
+      var localOnly = orders.filter(function(o){ return !cloudIds[String(o.id)]; });
+      var upload = false;
+      if(localOnly.length){ upload = confirm("พบออเดอร์ในเครื่องนี้ที่ยังไม่อยู่บนคลาวด์ " + localOnly.length + " รายการ\n\nตกลง = อัปโหลดรวมกับข้อมูลบนคลาวด์\nยกเลิก = ใช้เฉพาะข้อมูลบนคลาวด์"); }
+      var merged = meta.orders.slice();
+      if(upload){ merged = merged.concat(localOnly); }
+      orders = merged;
+      meta.orders.forEach(function(o){ cloud.lastOrders[String(o.id)] = stableStringify(cleanForCloud(o)); });
+      if(meta.veg === null){ /* cloud has no vegetable list yet: keep the local one and upload it */ }
+      else { try{ vegetables = JSON.parse(meta.veg); }catch(e){} }
+      normalizeData(); cacheLocal();
+      gotOrders = gotVeg = true;
+      cloud.pendingPush = true; // flushed by maybeReady: uploads chosen local orders / vegetable list
+      refreshFromRemote(); resetItemRows();
+      maybeReady();
+    }
+    var u1 = cloud.db.collection("dm_orders").onSnapshot({includeMetadataChanges:true}, function(snap){
+      if(snap.metadata.fromCache && !linked && !firstLinkDone){ return; } // wait for a real server answer on first link
+      var list = []; snap.forEach(function(d){ list.push(d.data()); });
+      if(!firstLinkDone){ meta.orders = list; tryFirstLink(); return; }
+      var changed = snap.docChanges().length > 0;
+      if(changed && !snap.metadata.hasPendingWrites){
+        orders = list;
+        cloud.lastOrders = {}; list.forEach(function(o){ cloud.lastOrders[String(o.id)] = stableStringify(cleanForCloud(o)); });
+        normalizeData(); cacheLocal(); refreshFromRemote();
+      }
+      gotOrders = true; maybeReady();
+      if(cloud.ready) setCloudStatus((navigator.onLine === false || snap.metadata.fromCache && snap.metadata.hasPendingWrites) ? "offline" : (snap.metadata.hasPendingWrites ? "syncing" : "synced"));
+    }, function(err){ setCloudStatus("offline"); if(err && err.code === "permission-denied"){ toast("ไม่มีสิทธิ์เข้าถึงข้อมูล ตรวจสอบ Firestore Rules"); } });
+    var u2 = cloud.db.collection("dm_meta").doc("vegetables").onSnapshot({includeMetadataChanges:true}, function(doc){
+      if(doc.metadata.fromCache && !linked && !firstLinkDone){ return; }
+      var json = doc.exists ? doc.data().json : null;
+      if(!firstLinkDone){ meta.veg = json; tryFirstLink(); return; }
+      if(doc.exists && !doc.metadata.hasPendingWrites && json !== cloud.lastVegJson){
+        cloud.lastVegJson = json;
+        try{ vegetables = JSON.parse(json); normalizeData(); cacheLocal(); refreshFromRemote(); }catch(e){}
+      } else if(!doc.exists && doc.metadata.fromCache === false){
+        cloudPushVegetables();
+      }
+      gotVeg = true; maybeReady();
+    }, function(){ setCloudStatus("offline"); });
+    cloud.unsubs = [u1, u2];
+  }
+  window.addEventListener("online", function(){ if(cloud.on && cloud.user) setCloudStatus("syncing"); });
+  window.addEventListener("offline", function(){ if(cloud.on) setCloudStatus("offline"); });
+
   // ---------- boot ----------
   loadAll();
+  bootCloud();
 })();
 </script>
 

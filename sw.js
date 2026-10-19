@@ -1,5 +1,5 @@
 // เปลี่ยนเลขเวอร์ชันนี้ทุกครั้งที่อัปเดต index.html เพื่อให้เครื่องผู้ใช้โหลดของใหม่
-const VERSION = "dm-v2";
+const VERSION = "dm-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const CDN = [
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
@@ -29,8 +29,17 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // แผนที่/ค้นหาที่อยู่: ใช้เน็ตก่อน ไม่เก็บถาวร
+  // แผนที่/ค้นหาที่อยู่/Firebase: ไม่ยุ่ง ปล่อยให้เบราว์เซอร์ทำเอง
   if (url.hostname.endsWith("tile.openstreetmap.org") || url.hostname.includes("nominatim")) return;
+  if (url.hostname.endsWith("googleapis.com") || url.hostname.endsWith("firebaseio.com") || url.hostname.endsWith("firebaseapp.com")) return;
+
+  // ไฟล์ตั้งค่า Firebase: เน็ตก่อนเสมอ เพื่อให้แก้ค่าแล้วมีผลทันที
+  if (url.origin === location.origin && url.pathname.endsWith("firebase-config.js")) {
+    e.respondWith((async () => {
+      try { return await fetch(req); } catch (_) { return (await caches.match(req)) || Response.error(); }
+    })());
+    return;
+  }
 
   // หน้าเว็บ: เน็ตก่อน ถ้าไม่มีเน็ตใช้ของที่เก็บไว้
   if (req.mode === "navigate") {
