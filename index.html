@@ -619,6 +619,21 @@
   @media (prefers-reduced-motion: reduce){
     .glass-tabbar, .gt-lens, .gt-tab svg{transition:none !important; animation:none !important;}
   }
+
+  /* ===== iPhone/iPad installed app: keep clear of status bar (clock, signal, battery) and Dynamic Island ===== */
+  body::before{ /* solid green cap behind the status bar so white clock/battery stay readable on every page */
+    content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top, 0px);
+    background:var(--green, #1F4D36); z-index:30000; pointer-events:none;
+  }
+  .sidebar{padding-top:calc(22px + env(safe-area-inset-top, 0px));}
+  .content{padding-top:calc(28px + env(safe-area-inset-top, 0px)); padding-left:calc(32px + env(safe-area-inset-left, 0px)); padding-right:calc(32px + env(safe-area-inset-right, 0px));}
+  #dm-map-wrap.fullscreen, #picker-map-wrap.fullscreen{padding-top:calc(16px + env(safe-area-inset-top, 0px)); padding-left:calc(16px + env(safe-area-inset-left, 0px)); padding-right:calc(16px + env(safe-area-inset-right, 0px)); padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px));}
+  .map-fullscreen-btn{top:calc(10px + env(safe-area-inset-top, 0px)) !important;}
+  .dm-modal-backdrop{padding-top:calc(16px + env(safe-area-inset-top, 0px)); padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px));}
+  @media (max-width: 880px){
+    .sidebar{padding-top:calc(6px + env(safe-area-inset-top, 0px)); padding-left:calc(16px + env(safe-area-inset-left, 0px)); padding-right:calc(16px + env(safe-area-inset-right, 0px));}
+    .content{padding-top:18px; padding-left:calc(18px + env(safe-area-inset-left, 0px)); padding-right:calc(18px + env(safe-area-inset-right, 0px));}
+  }
 </style>
 
 <div class="dm-root">
