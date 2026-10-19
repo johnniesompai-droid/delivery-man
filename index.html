@@ -377,6 +377,26 @@
   .range-btn{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:'Prompt',sans-serif;}
   .range-btn.active{background:var(--green); color:#fff; border-color:var(--green);}
   .range-controls .sep{width:1px; height:20px; background:var(--line); margin:0 4px;}
+
+  /* ---- range picker: stacked checklist ---- */
+  .range-controls .range-stack{flex:0 0 100%; display:flex; flex-direction:column; gap:6px; padding:4px 0 6px;}
+  .range-row{display:flex; align-items:center; gap:12px; width:auto; text-align:left; min-height:46px; padding:8px 14px 8px 10px; border-radius:16px;
+    background:rgba(255,255,255,.55); border:1px solid rgba(217,224,209,.7); color:var(--ink); font-size:14px; font-weight:500;
+    margin-inline:calc(min(var(--d,2),3) * 7px); opacity:calc(1 - min(var(--d,2),3) * .13);
+    transition:margin .28s ease, opacity .28s ease, background .2s ease, box-shadow .28s ease, transform .2s ease;
+    -webkit-tap-highlight-color:transparent;}
+  .range-row .rr-ico{flex:0 0 auto; width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:15px; font-weight:700; color:#fff; background:var(--c,#7b8a73);}
+  .range-row .rr-ico.c-blue{--c:#6f9bd8;} .range-row .rr-ico.c-amber{--c:#d9a05b;} .range-row .rr-ico.c-purple{--c:#a366e0;}
+  .range-row .rr-ico.c-green{--c:#6cb77f;} .range-row .rr-ico.c-rose{--c:#d98c8c;}
+  .range-row .rr-txt{flex:1 1 auto; min-width:0;}
+  .range-row .rr-check{flex:0 0 auto; width:22px; height:22px; border-radius:50%; border:2px solid #c9d1c1; position:relative; transition:background .2s, border-color .2s;}
+  .range-row.active{background:#fff; border-color:rgba(255,255,255,.9); color:var(--ink); font-weight:600; font-size:15px; min-height:54px; opacity:1; margin-inline:0;
+    box-shadow:0 8px 24px rgba(31,77,54,.14), 0 1px 3px rgba(0,0,0,.06);}
+  .range-row.active .rr-check{background:var(--green); border-color:var(--green);}
+  .range-row.active .rr-check::after{content:""; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);}
+  .range-date{display:inline-flex; align-items:center; gap:8px;}
+  .range-row:active{transform:scale(.985);}
+  @media (min-width:700px){ .range-controls .range-stack{flex-basis:380px; max-width:420px;} }
   .range-controls input[type=date]{width:auto; padding:6px 10px; font-size:12.5px;}
   .analytics-summary{display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:14px; margin-bottom:18px;}
   .analytics-stat{
@@ -792,14 +812,15 @@
       </div>
 
       <div class="range-controls" id="dashboard-range-controls">
-        <button class="range-btn active" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
-        <button class="range-btn" data-range="today">วันนี้</button>
-        <button class="range-btn" data-range="7">7 วันล่าสุด</button>
-        <button class="range-btn" data-range="30">30 วันล่าสุด</button>
-        <button class="range-btn" data-range="all">ทั้งหมด</button>
-        <span class="sep"></span>
-        <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="range-from" style="width:150px;">
-        <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="range-to" style="width:150px;">
+        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา">
+          <button type="button" class="range-btn range-row active" data-range="round" role="radio"><span class="rr-ico c-blue">🗓️</span><span class="rr-txt">รอบนี้ (ศุกร์–อาทิตย์)</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="today" role="radio"><span class="rr-ico c-amber">1</span><span class="rr-txt">วันนี้</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="7" role="radio"><span class="rr-ico c-purple">7</span><span class="rr-txt">7 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="30" role="radio"><span class="rr-ico c-green">30</span><span class="rr-txt">30 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="all" role="radio"><span class="rr-ico c-rose">∞</span><span class="rr-txt">ทั้งหมด</span><span class="rr-check" aria-hidden="true"></span></button>
+        </div>
+        <span class="range-date"><label style="margin:0; font-weight:500;">จาก</label><input type="date" id="range-from" style="width:150px;"></span>
+        <span class="range-date"><label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="range-to" style="width:150px;"></span>
       </div>
       <p class="hint" id="range-span-label" style="margin-bottom:16px;"></p>
 
@@ -955,14 +976,15 @@
         <p>สรุปจำนวนถุงและน้ำหนักรวมของผักแต่ละชนิด/ขนาด (ไม่รวมออเดอร์ที่ยกเลิก) — เลือกช่วงเวลาเพื่อดูแยกเป็นงวดๆ</p>
       </div>
       <div class="range-controls" id="summary-range-controls">
-        <button class="range-btn active" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
-        <button class="range-btn" data-range="today">วันนี้</button>
-        <button class="range-btn" data-range="7">7 วันล่าสุด</button>
-        <button class="range-btn" data-range="30">30 วันล่าสุด</button>
-        <button class="range-btn" data-range="all">ทั้งหมด</button>
-        <span class="sep"></span>
-        <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="summary-range-from" style="width:150px;">
-        <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="summary-range-to" style="width:150px;">
+        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา">
+          <button type="button" class="range-btn range-row active" data-range="round" role="radio"><span class="rr-ico c-blue">🗓️</span><span class="rr-txt">รอบนี้ (ศุกร์–อาทิตย์)</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="today" role="radio"><span class="rr-ico c-amber">1</span><span class="rr-txt">วันนี้</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="7" role="radio"><span class="rr-ico c-purple">7</span><span class="rr-txt">7 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="30" role="radio"><span class="rr-ico c-green">30</span><span class="rr-txt">30 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="all" role="radio"><span class="rr-ico c-rose">∞</span><span class="rr-txt">ทั้งหมด</span><span class="rr-check" aria-hidden="true"></span></button>
+        </div>
+        <span class="range-date"><label style="margin:0; font-weight:500;">จาก</label><input type="date" id="summary-range-from" style="width:150px;"></span>
+        <span class="range-date"><label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="summary-range-to" style="width:150px;"></span>
       </div>
       <p class="hint" id="summary-range-span-label" style="margin-bottom:16px;"></p>
       <div id="summary-content"></div>
@@ -975,14 +997,15 @@
         <p>แผนที่ตำแหน่งลูกค้า และติดตามตำแหน่งรถส่งแบบเรียลไทม์</p>
       </div>
       <div class="range-controls" id="delivery-range-controls">
-        <button class="range-btn active" data-range="round">🗓️ รอบนี้ (ศุกร์–อาทิตย์)</button>
-        <button class="range-btn" data-range="today">วันนี้</button>
-        <button class="range-btn" data-range="7">7 วันล่าสุด</button>
-        <button class="range-btn" data-range="30">30 วันล่าสุด</button>
-        <button class="range-btn" data-range="all">ทั้งหมด</button>
-        <span class="sep"></span>
-        <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="delivery-range-from" style="width:150px;">
-        <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="delivery-range-to" style="width:150px;">
+        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา">
+          <button type="button" class="range-btn range-row active" data-range="round" role="radio"><span class="rr-ico c-blue">🗓️</span><span class="rr-txt">รอบนี้ (ศุกร์–อาทิตย์)</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="today" role="radio"><span class="rr-ico c-amber">1</span><span class="rr-txt">วันนี้</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="7" role="radio"><span class="rr-ico c-purple">7</span><span class="rr-txt">7 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="30" role="radio"><span class="rr-ico c-green">30</span><span class="rr-txt">30 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
+          <button type="button" class="range-btn range-row" data-range="all" role="radio"><span class="rr-ico c-rose">∞</span><span class="rr-txt">ทั้งหมด</span><span class="rr-check" aria-hidden="true"></span></button>
+        </div>
+        <span class="range-date"><label style="margin:0; font-weight:500;">จาก</label><input type="date" id="delivery-range-from" style="width:150px;"></span>
+        <span class="range-date"><label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="delivery-range-to" style="width:150px;"></span>
       </div>
       <p class="hint" id="delivery-range-span-label" style="margin-bottom:12px;"></p>
       <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
@@ -1037,7 +1060,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-7</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-8</p>
     </section>
 
   </main>
@@ -2678,7 +2701,17 @@
     var toInput = document.getElementById(opts.toId);
     var spanLabel = document.getElementById(opts.spanLabelId);
 
+    function layoutStack(){
+      var rows = container.querySelectorAll(".range-row");
+      var idx = -1;
+      rows.forEach(function(el,i){ if(el.classList.contains("active")) idx = i; });
+      rows.forEach(function(el,i){
+        el.style.setProperty("--d", idx<0 ? 2 : Math.abs(i-idx));
+        el.setAttribute("aria-checked", i===idx ? "true" : "false");
+      });
+    }
     function refreshUI(){
+      layoutStack();
       var r = opts.getRange();
       fromInput.value = toDateInputValue(r.from);
       toInput.value = toDateInputValue(r.to);
