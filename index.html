@@ -2,8 +2,17 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Delivery Man — ระบบรับออเดอร์ & จัดส่งผัก</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Delivery Man — ระบบรับออเดอร์ &amp; จัดส่งผัก</title>
+<meta name="theme-color" content="#1F4D36">
+<meta name="description" content="รับออเดอร์ผักและจัดการจัดส่งบนแผนที่">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Delivery Man">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
@@ -497,6 +506,20 @@
   .pb-call{background:var(--carrot-pale); color:#A64E15; text-decoration:none; text-align:center; display:block;}
   .ticket .pbtns{margin-top:8px;}
 
+  .dm-modal-backdrop{position:fixed; inset:0; background:rgba(20,28,20,0.6); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .dm-modal{background:#fff; border-radius:14px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; padding:16px; box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+  .dm-modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:15px;}
+  .dm-modal-x{border:none; background:var(--surface-2); width:32px; height:32px; border-radius:50%; font-size:15px; cursor:pointer;}
+  .share-imgs{display:flex; flex-direction:column; gap:10px; margin-bottom:12px;}
+  .share-imgs img{width:100%; height:auto; border:1px solid var(--line); border-radius:8px; display:block;}
+  .dm-modal-actions{display:flex; flex-wrap:wrap; gap:8px;}
+  .install-steps{margin:0; padding-left:20px; font-size:14px; line-height:1.9;}
+  .install-btn{display:none; align-items:center; justify-content:center; gap:6px; margin-top:14px; padding:9px 12px; border:none; border-radius:var(--radius-sm); background:var(--carrot); color:#fff; font-family:'Prompt',sans-serif; font-size:13px; font-weight:600; cursor:pointer;}
+  @media (max-width: 880px){
+    .install-btn{position:fixed; right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:900; margin:0; box-shadow:0 4px 14px rgba(0,0,0,0.25); border-radius:999px; padding:10px 16px;}
+  }
+  .content{padding-bottom:calc(18px + env(safe-area-inset-bottom));}
+
   .toast{
     position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
     background:var(--green); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px;
@@ -538,6 +561,7 @@
       <button class="nav-btn" data-page="summary"><span class="ic">📦</span> สรุปออเดอร์</button>
       <button class="nav-btn" data-page="delivery"><span class="ic">🗺️</span> จัดส่ง</button>
     </nav>
+    <button class="install-btn" id="btn-install" type="button">📲 ติดตั้งเป็นแอพ</button>
     <div class="sidebar-footer">
       <div class="clock-corner"><div class="c-date" id="clock-date">-</div><div class="c-time" id="clock-time">--:--:--</div></div>
       <div class="gps-chip"><span class="dot" id="dm-gps-dot"></span> <span id="dm-gps-label">GPS ยังไม่เปิด</span></div>
@@ -754,6 +778,7 @@
         <button class="btn btn-carrot" id="btn-toggle-gps">🚚 เริ่มติดตาม GPS</button>
         <button class="btn btn-ghost" id="btn-fit-map">🔎 ดูออเดอร์ทั้งหมด</button>
         <button class="btn btn-ghost" id="btn-expand-map">⛶ ขยายแผนที่เต็มจอ</button>
+        <button class="btn btn-primary" id="btn-share-list">📤 แชร์รายชื่อเป็นรูปภาพ</button>
       </div>
       <div class="filter-tabs" id="filter-tabs">
         <button class="range-btn active" data-filter="all">ทั้งหมด</button>
@@ -2162,6 +2187,148 @@
   function updateScrollIndicators(){
     updateDeliveryScrollIndicator();
     updatePageScrollIndicator();
+  }
+
+  // ---------- share customer list as image ----------
+  var SHARE_FONT = "'Prompt','Noto Sans Thai','Sarabun',sans-serif";
+  function isThaiCombining(ch){ var c = ch.charCodeAt(0); return c === 0x0E31 || (c >= 0x0E34 && c <= 0x0E3A) || (c >= 0x0E47 && c <= 0x0E4E); }
+  function isThaiLeading(ch){ var c = ch.charCodeAt(0); return c >= 0x0E40 && c <= 0x0E44; }
+  function wrapCanvasText(ctx, text, maxWidth){
+    var lines = [], current = "";
+    Array.from(String(text)).forEach(function(ch){
+      var test = current + ch;
+      if(current && ch !== " " && ctx.measureText(test).width > maxWidth && !isThaiCombining(ch) && !isThaiLeading(current.slice(-1))){ lines.push(current); current = ch; }
+      else { current = test; }
+    });
+    if(current) lines.push(current);
+    return lines.length ? lines : [""];
+  }
+  function roundRectPath(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function shareStatusInfo(o){
+    if(o.cancelled) return {text:"ยกเลิกแล้ว", color:"#8A9284"};
+    var d = o.deliveryStatus === "delivered", p = o.paymentStatus === "paid";
+    var text = (d ? "ส่งแล้ว" : "รอจัดส่ง") + " · " + (p ? "จ่ายแล้ว" : "ค้างจ่าย");
+    var color = (d && p) ? "#1F4D36" : (d ? "#B8402E" : "#E8722C");
+    return {text:text, color:color};
+  }
+  function buildOrderCard(ctx, o, cardW){
+    var pad = 16, innerW = cardW - pad * 2 - 6, ops = [], y = pad;
+    var st = shareStatusInfo(o);
+    function addLines(text, size, weight, color, maxW){
+      var font = weight + " " + size + "px " + SHARE_FONT; ctx.font = font;
+      var lh = Math.round(size * 1.55);
+      wrapCanvasText(ctx, text, maxW || innerW).forEach(function(t){ ops.push({text:t, font:font, color:color, x:pad + 6, y:y + lh / 2, align:"left"}); y += lh; });
+    }
+    var amountText = money(o.total), amountFont = "700 17px " + SHARE_FONT; ctx.font = amountFont;
+    var amountW = ctx.measureText(amountText).width;
+    ops.push({text:amountText, font:amountFont, color:"#1F4D36", x:cardW - pad, y:y + Math.round(17 * 1.55) / 2, align:"right"});
+    addLines(o.customerName || "ลูกค้าไม่ระบุชื่อ", 17, 700, "#20261C", innerW - amountW - 12);
+    if(o.phone) addLines("โทร: " + o.phone, 14, 600, "#E8722C");
+    if(o.address) addLines("ที่อยู่: " + o.address, 13, 400, "#6C7566");
+    if(o.lat == null || o.lng == null) addLines("(ไม่ได้ปักหมุดตำแหน่งในแผนที่)", 12, 400, "#8A9284");
+    y += 2;
+    o.items.forEach(function(it){ addLines("• " + it.vegName + " " + it.size + " × " + it.qty + " ถุง", 14, 500, "#20261C"); });
+    if(o.discount > 0) addLines("ส่วนลดโปรโมชั่น -" + money(o.discount), 13, 600, "#C9922E");
+    y += 2;
+    addLines("รับ: " + fmtDateTime(o.createdAt) + (o.deliveredAt ? "  ·  ส่ง: " + fmtDateTime(o.deliveredAt) : ""), 12, 400, "#6C7566");
+    addLines(st.text, 13, 700, st.color);
+    return {ops:ops, h:y + pad, color:st.color};
+  }
+  function renderSharePages(list, title, subtitle){
+    var W = 720, margin = 20, cardW = W - margin * 2, perPage = 10, scale = 2;
+    var measure = document.createElement("canvas").getContext("2d");
+    var cards = list.map(function(o){ return buildOrderCard(measure, o, cardW); });
+    var pages = []; for(var i = 0; i < cards.length; i += perPage){ pages.push(cards.slice(i, i + perPage)); }
+    var totalAmt = list.reduce(function(s, o){ return s + o.total; }, 0);
+    var nowText = new Date().toLocaleString("th-TH", {day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit"});
+    return pages.map(function(pageCards, pIdx){
+      var headerH = 104, footerH = 44;
+      var bodyH = pageCards.reduce(function(s, c){ return s + c.h + 12; }, 0);
+      var H = headerH + 14 + bodyH + footerH;
+      var cv = document.createElement("canvas"); cv.width = W * scale; cv.height = H * scale;
+      var ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.textBaseline = "middle";
+      ctx.fillStyle = "#EEF2E9"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#1F4D36"; ctx.fillRect(0, 0, W, headerH);
+      ctx.textAlign = "left"; ctx.fillStyle = "#FFFFFF"; ctx.font = "700 22px " + SHARE_FONT; ctx.fillText(title, margin, 32);
+      ctx.fillStyle = "#CFE0D3"; ctx.font = "400 13px " + SHARE_FONT; ctx.fillText(subtitle, margin, 58);
+      ctx.fillText("ทั้งหมด " + list.length + " ราย · รวม " + money(totalAmt) + (pages.length > 1 ? "   (หน้า " + (pIdx + 1) + "/" + pages.length + ")" : ""), margin, 80);
+      var cy = headerH + 14;
+      pageCards.forEach(function(c){
+        ctx.fillStyle = "#FFFFFF"; roundRectPath(ctx, margin, cy, cardW, c.h, 12); ctx.fill();
+        ctx.save(); roundRectPath(ctx, margin, cy, cardW, c.h, 12); ctx.clip(); ctx.fillStyle = c.color; ctx.fillRect(margin, cy, 6, c.h); ctx.restore();
+        c.ops.forEach(function(op){ ctx.font = op.font; ctx.fillStyle = op.color; ctx.textAlign = op.align; ctx.fillText(op.text, margin + op.x, cy + op.y); });
+        cy += c.h + 12;
+      });
+      ctx.textAlign = "center"; ctx.fillStyle = "#6C7566"; ctx.font = "400 12px " + SHARE_FONT;
+      ctx.fillText("Delivery Man · สร้างเมื่อ " + nowText, W / 2, H - footerH / 2);
+      return cv;
+    });
+  }
+  var shareObjectUrls = [];
+  function closeShareModal(){ var m = document.getElementById("share-modal"); if(m) m.remove(); shareObjectUrls.forEach(function(u){ URL.revokeObjectURL(u); }); shareObjectUrls = []; }
+  function downloadShareFiles(files){ files.forEach(function(f, i){ setTimeout(function(){ var u = URL.createObjectURL(f); var a = document.createElement("a"); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); }, i * 400); }); }
+  function showSharePreview(files, title, summaryText){
+    closeShareModal();
+    var canNative = !!(navigator.canShare && navigator.canShare({files:files}));
+    var imgsHtml = files.map(function(f){ var u = URL.createObjectURL(f); shareObjectUrls.push(u); return '<img src="' + u + '" alt="' + esc(f.name) + '">'; }).join("");
+    var backdrop = document.createElement("div"); backdrop.className = "dm-modal-backdrop"; backdrop.id = "share-modal";
+    backdrop.innerHTML = '<div class="dm-modal"><div class="dm-modal-head"><strong>📤 แชร์รายชื่อเป็นรูปภาพ</strong><button type="button" class="dm-modal-x" id="share-close">✕</button></div>' +
+      '<p class="hint" style="margin-bottom:10px;">' + esc(summaryText) + '</p><div class="share-imgs">' + imgsHtml + '</div><div class="dm-modal-actions">' +
+      (canNative ? '<button type="button" class="btn btn-primary" id="share-native">📤 แชร์ไปยังไลน์ / เมสเซนเจอร์ / แอพอื่น</button>' : '') +
+      '<button type="button" class="btn btn-ghost" id="share-download">💾 บันทึกรูปภาพ</button></div>' +
+      (canNative ? '' : '<p class="hint" style="margin-top:10px;">เบราว์เซอร์นี้ไม่มีปุ่มแชร์โดยตรง — กด "บันทึกรูปภาพ" (หรือกดค้างที่รูปแล้วเลือกบันทึก) แล้วนำไปส่งในไลน์/เมสเซนเจอร์ได้เลย</p>') + '</div>';
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", function(e){ if(e.target === backdrop) closeShareModal(); });
+    document.getElementById("share-close").addEventListener("click", closeShareModal);
+    document.getElementById("share-download").addEventListener("click", function(){ downloadShareFiles(files); });
+    var nativeBtn = document.getElementById("share-native");
+    if(nativeBtn){ nativeBtn.addEventListener("click", function(){ navigator.share({files:files, title:title}).catch(function(err){ if(err && err.name !== "AbortError"){ toast("แชร์ไม่สำเร็จ ลองกด \"บันทึกรูปภาพ\" แทน"); } }); }); }
+  }
+  document.getElementById("btn-share-list").addEventListener("click", function(){
+    var list = orders.filter(passesDeliveryView).sort(function(a, b){ return b.createdAt - a.createdAt; });
+    if(list.length === 0){ toast("ไม่มีรายชื่อในหมวดนี้ให้แชร์"); return; }
+    var btn = this;
+    var activeFilterBtn = document.querySelector("#filter-tabs .range-btn.active");
+    var filterName = activeFilterBtn ? activeFilterBtn.textContent.trim() : "ทั้งหมด";
+    var fmtD = function(ts){ return new Date(ts).toLocaleDateString("th-TH", {day:"numeric", month:"short", year:"numeric"}); };
+    var title = "รายชื่อลูกค้า — " + filterName;
+    var subtitle = "ช่วงที่รับออเดอร์: " + fmtD(deliveryRange.from) + " – " + fmtD(deliveryRange.to);
+    btn.disabled = true; var oldText = btn.textContent; btn.textContent = "กำลังสร้างรูป...";
+    var fontsReady = (document.fonts && document.fonts.load) ? Promise.all(["400 13px Prompt","500 14px Prompt","600 14px Prompt","700 17px Prompt"].map(function(f){ return document.fonts.load(f); })).catch(function(){}) : Promise.resolve();
+    fontsReady.then(function(){
+      var canvases = renderSharePages(list, title, subtitle);
+      return Promise.all(canvases.map(function(cv, i){ return new Promise(function(resolve, reject){ cv.toBlob(function(b){ if(!b){ reject(new Error("toBlob failed")); return; } resolve(new File([b], "delivery-man-list-" + (i + 1) + ".png", {type:"image/png"})); }, "image/png"); }); }));
+    }).then(function(files){ showSharePreview(files, title, filterName + " · " + list.length + " ราย · " + files.length + " รูป"); })
+      .catch(function(){ toast("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); })
+      .then(function(){ btn.disabled = false; btn.textContent = oldText; });
+  });
+
+  // ---------- PWA install ----------
+  var deferredInstallPrompt = null;
+  var installBtn = document.getElementById("btn-install");
+  function isStandaloneMode(){ return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true; }
+  function isIOSDevice(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+  function showInstallHelp(){
+    var old = document.getElementById("info-modal"); if(old) old.remove();
+    var ios = isIOSDevice();
+    var steps = ios
+      ? '<ol class="install-steps"><li>เปิดเว็บนี้ด้วย <b>Safari</b> (ต้องเป็น Safari เท่านั้น)</li><li>กดปุ่ม <b>แชร์</b> (ไอคอนสี่เหลี่ยมมีลูกศรชี้ขึ้น) ที่แถบด้านล่าง/ด้านบน</li><li>เลื่อนลงแล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม"</b></li><li>กด <b>"เพิ่ม"</b> มุมขวาบน</li></ol>'
+      : '<ol class="install-steps"><li>เปิดเว็บนี้ด้วย <b>Chrome</b></li><li>กดเมนู <b>⋮</b> มุมขวาบน</li><li>เลือก <b>"ติดตั้งแอพ"</b> หรือ <b>"เพิ่มลงในหน้าจอหลัก"</b></li><li>กด <b>"ติดตั้ง"</b></li></ol>';
+    var b = document.createElement("div"); b.className = "dm-modal-backdrop"; b.id = "info-modal";
+    b.innerHTML = '<div class="dm-modal"><div class="dm-modal-head"><strong>📲 ติดตั้งเป็นแอพ</strong><button type="button" class="dm-modal-x" id="info-close">✕</button></div>' + steps +
+      '<p class="hint" style="margin-top:10px;">หมายเหตุ: ข้อมูลเก็บในเครื่องนั้นๆ แยกกัน ข้อมูลที่กรอกใน Safari/Chrome จะไม่ย้ายมาในแอพที่ติดตั้งอัตโนมัติ</p></div>';
+    document.body.appendChild(b);
+    b.addEventListener("click", function(e){ if(e.target === b) b.remove(); });
+    document.getElementById("info-close").addEventListener("click", function(){ b.remove(); });
+  }
+  if(installBtn && !isStandaloneMode()){
+    if(isIOSDevice()){ installBtn.style.display = "inline-flex"; }
+    window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); deferredInstallPrompt = e; installBtn.style.display = "inline-flex"; });
+    window.addEventListener("appinstalled", function(){ installBtn.style.display = "none"; deferredInstallPrompt = null; toast("ติดตั้งแอพเรียบร้อยแล้ว"); });
+    installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
+  }
+  if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+    window.addEventListener("load", function(){ navigator.serviceWorker.register("./sw.js").catch(function(){}); });
   }
 
   // ---------- GPS tracking ----------
