@@ -698,6 +698,14 @@
   html.dm-glass .glass-tabbar.compact .gt-lb{opacity:0; max-height:0;}
   html.dm-glass .glass-tabbar.compact .gt-lens{top:5px; height:calc(100% - 10px); border-radius:24px;}
   html.dm-glass .glass-tabbar.compact .gt-tab svg{width:23px; height:23px;}
+
+  /* iPad (large touch screens): sit the glass bar lower, closer to the bottom edge */
+  @media (min-width: 700px) and (min-height: 600px){
+    html.dm-glass .glass-tabbar{bottom:2px;}
+    html.dm-glass .glass-tabbar.compact{bottom:0px;}
+    html.dm-glass .toast{bottom:84px;}
+    html.dm-glass .install-btn{bottom:84px !important;}
+  }
 </style>
 
 <script>
@@ -998,7 +1006,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-4 (แถบเมนูต่ำลง)</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-5</p>
     </section>
 
   </main>
