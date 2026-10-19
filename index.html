@@ -378,24 +378,29 @@
   .range-btn.active{background:var(--green); color:#fff; border-color:var(--green);}
   .range-controls .sep{width:1px; height:20px; background:var(--line); margin:0 4px;}
 
-  /* ---- range picker: stacked checklist ---- */
-  .range-controls .range-stack{flex:0 0 100%; display:flex; flex-direction:column; gap:6px; padding:4px 0 6px;}
-  .range-row{display:flex; align-items:center; gap:12px; width:auto; text-align:left; min-height:46px; padding:8px 14px 8px 10px; border-radius:16px;
-    background:rgba(255,255,255,.55); border:1px solid rgba(217,224,209,.7); color:var(--ink); font-size:14px; font-weight:500;
-    margin-inline:calc(min(var(--d,2),3) * 7px); opacity:calc(1 - min(var(--d,2),3) * .13);
-    transition:margin .28s ease, opacity .28s ease, background .2s ease, box-shadow .28s ease, transform .2s ease;
+  /* ---- range picker: single-line wheel (press, hold & drag up/down) ---- */
+  .range-controls .range-stack{position:relative; flex:0 0 100%; height:56px; margin:4px 0 8px; z-index:1;}
+  .range-controls .range-stack.open{z-index:40;}
+  .rs-wheel{position:absolute; left:0; right:0; top:0; height:56px; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; cursor:grab;}
+  .range-stack.dragging .rs-wheel{cursor:grabbing;}
+  .range-stack .range-row, .range-stack .range-row.active{position:absolute; left:0; right:0; top:0; height:56px; box-sizing:border-box; display:flex; align-items:center; gap:12px; margin:0; padding:0 16px 0 12px; border-radius:18px; text-align:left;
+    background:rgba(255,255,255,.88); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(217,224,209,.9); color:var(--ink); font-size:14.5px; font-weight:500;
+    transform-origin:center; opacity:0; pointer-events:none; will-change:transform,opacity;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1), opacity .25s ease, box-shadow .25s ease, background .2s ease;
     -webkit-tap-highlight-color:transparent;}
-  .range-row .rr-ico{flex:0 0 auto; width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:15px; font-weight:700; color:#fff; background:var(--c,#7b8a73);}
+  .range-stack.dragging .range-row{transition:none;}
+  .range-row .rr-ico{flex:0 0 auto; width:32px; height:32px; border-radius:10px; display:grid; place-items:center; font-size:16px; font-weight:700; color:#fff; background:var(--c,#7b8a73);}
   .range-row .rr-ico.c-blue{--c:#6f9bd8;} .range-row .rr-ico.c-amber{--c:#d9a05b;} .range-row .rr-ico.c-purple{--c:#a366e0;}
-  .range-row .rr-ico.c-green{--c:#6cb77f;} .range-row .rr-ico.c-rose{--c:#d98c8c;}
-  .range-row .rr-txt{flex:1 1 auto; min-width:0;}
-  .range-row .rr-check{flex:0 0 auto; width:22px; height:22px; border-radius:50%; border:2px solid #c9d1c1; position:relative; transition:background .2s, border-color .2s;}
-  .range-row.active{background:#fff; border-color:rgba(255,255,255,.9); color:var(--ink); font-weight:600; font-size:15px; min-height:54px; opacity:1; margin-inline:0;
-    box-shadow:0 8px 24px rgba(31,77,54,.14), 0 1px 3px rgba(0,0,0,.06);}
-  .range-row.active .rr-check{background:var(--green); border-color:var(--green);}
-  .range-row.active .rr-check::after{content:""; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);}
+  .range-row .rr-ico.c-green{--c:#6cb77f;} .range-row .rr-ico.c-rose{--c:#d98c8c;} .range-row .rr-ico.c-slate{--c:#8a97a6;}
+  .range-row .rr-txt{flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .range-row .rr-check{flex:0 0 auto; width:24px; height:24px; border-radius:50%; border:2px solid #c9d1c1; position:relative; box-sizing:border-box; transition:background .2s, border-color .2s;}
+  .range-stack .range-row.near, .range-stack .range-row.active.near{background:#fff; border-color:rgba(255,255,255,.95); font-weight:600; font-size:15.5px;
+    box-shadow:0 10px 28px rgba(31,77,54,.18), 0 1px 3px rgba(0,0,0,.08);}
+  .range-stack.open .range-row.near .rr-check{background:var(--green); border-color:var(--green);}
+  .range-stack.open .range-row.near .rr-check::after{content:""; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);}
+  .range-stack:not(.open) .range-row.near .rr-check, .range-stack .rr-custom .rr-check{border:0; width:22px; height:22px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23788a73' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 9l5-5 5 5M7 15l5 5 5-5'/%3E%3C/svg%3E") center/22px no-repeat;}
   .range-date{display:inline-flex; align-items:center; gap:8px;}
-  .range-row:active{transform:scale(.985);}
   @media (min-width:700px){ .range-controls .range-stack{flex-basis:380px; max-width:420px;} }
   .range-controls input[type=date]{width:auto; padding:6px 10px; font-size:12.5px;}
   .analytics-summary{display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:14px; margin-bottom:18px;}
@@ -812,13 +817,14 @@
       </div>
 
       <div class="range-controls" id="dashboard-range-controls">
-        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา">
+        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา"><div class="rs-wheel">
           <button type="button" class="range-btn range-row active" data-range="round" role="radio"><span class="rr-ico c-blue">🗓️</span><span class="rr-txt">รอบนี้ (ศุกร์–อาทิตย์)</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="today" role="radio"><span class="rr-ico c-amber">1</span><span class="rr-txt">วันนี้</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="7" role="radio"><span class="rr-ico c-purple">7</span><span class="rr-txt">7 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="30" role="radio"><span class="rr-ico c-green">30</span><span class="rr-txt">30 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="all" role="radio"><span class="rr-ico c-rose">∞</span><span class="rr-txt">ทั้งหมด</span><span class="rr-check" aria-hidden="true"></span></button>
-        </div>
+          <div class="range-row rr-custom" aria-hidden="true"><span class="rr-ico c-slate">📅</span><span class="rr-txt">กำหนดวันที่เอง</span><span class="rr-check"></span></div>
+        </div></div>
         <span class="range-date"><label style="margin:0; font-weight:500;">จาก</label><input type="date" id="range-from" style="width:150px;"></span>
         <span class="range-date"><label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="range-to" style="width:150px;"></span>
       </div>
@@ -976,13 +982,14 @@
         <p>สรุปจำนวนถุงและน้ำหนักรวมของผักแต่ละชนิด/ขนาด (ไม่รวมออเดอร์ที่ยกเลิก) — เลือกช่วงเวลาเพื่อดูแยกเป็นงวดๆ</p>
       </div>
       <div class="range-controls" id="summary-range-controls">
-        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา">
+        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา"><div class="rs-wheel">
           <button type="button" class="range-btn range-row active" data-range="round" role="radio"><span class="rr-ico c-blue">🗓️</span><span class="rr-txt">รอบนี้ (ศุกร์–อาทิตย์)</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="today" role="radio"><span class="rr-ico c-amber">1</span><span class="rr-txt">วันนี้</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="7" role="radio"><span class="rr-ico c-purple">7</span><span class="rr-txt">7 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="30" role="radio"><span class="rr-ico c-green">30</span><span class="rr-txt">30 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="all" role="radio"><span class="rr-ico c-rose">∞</span><span class="rr-txt">ทั้งหมด</span><span class="rr-check" aria-hidden="true"></span></button>
-        </div>
+          <div class="range-row rr-custom" aria-hidden="true"><span class="rr-ico c-slate">📅</span><span class="rr-txt">กำหนดวันที่เอง</span><span class="rr-check"></span></div>
+        </div></div>
         <span class="range-date"><label style="margin:0; font-weight:500;">จาก</label><input type="date" id="summary-range-from" style="width:150px;"></span>
         <span class="range-date"><label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="summary-range-to" style="width:150px;"></span>
       </div>
@@ -997,13 +1004,14 @@
         <p>แผนที่ตำแหน่งลูกค้า และติดตามตำแหน่งรถส่งแบบเรียลไทม์</p>
       </div>
       <div class="range-controls" id="delivery-range-controls">
-        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา">
+        <div class="range-stack" role="radiogroup" aria-label="ช่วงเวลา"><div class="rs-wheel">
           <button type="button" class="range-btn range-row active" data-range="round" role="radio"><span class="rr-ico c-blue">🗓️</span><span class="rr-txt">รอบนี้ (ศุกร์–อาทิตย์)</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="today" role="radio"><span class="rr-ico c-amber">1</span><span class="rr-txt">วันนี้</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="7" role="radio"><span class="rr-ico c-purple">7</span><span class="rr-txt">7 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="30" role="radio"><span class="rr-ico c-green">30</span><span class="rr-txt">30 วันล่าสุด</span><span class="rr-check" aria-hidden="true"></span></button>
           <button type="button" class="range-btn range-row" data-range="all" role="radio"><span class="rr-ico c-rose">∞</span><span class="rr-txt">ทั้งหมด</span><span class="rr-check" aria-hidden="true"></span></button>
-        </div>
+          <div class="range-row rr-custom" aria-hidden="true"><span class="rr-ico c-slate">📅</span><span class="rr-txt">กำหนดวันที่เอง</span><span class="rr-check"></span></div>
+        </div></div>
         <span class="range-date"><label style="margin:0; font-weight:500;">จาก</label><input type="date" id="delivery-range-from" style="width:150px;"></span>
         <span class="range-date"><label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="delivery-range-to" style="width:150px;"></span>
       </div>
@@ -1060,7 +1068,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-8</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-9</p>
     </section>
 
   </main>
@@ -2701,17 +2709,73 @@
     var toInput = document.getElementById(opts.toId);
     var spanLabel = document.getElementById(opts.spanLabelId);
 
-    function layoutStack(){
-      var rows = container.querySelectorAll(".range-row");
-      var idx = -1;
-      rows.forEach(function(el,i){ if(el.classList.contains("active")) idx = i; });
-      rows.forEach(function(el,i){
-        el.style.setProperty("--d", idx<0 ? 2 : Math.abs(i-idx));
-        el.setAttribute("aria-checked", i===idx ? "true" : "false");
+    var stack = container.querySelector(".range-stack");
+    var wheel = stack ? stack.querySelector(".rs-wheel") : null;
+    var wrows = wheel ? Array.prototype.slice.call(wheel.querySelectorAll(".range-row[data-range]")) : [];
+    var customRow = wheel ? wheel.querySelector(".rr-custom") : null;
+    var ROWH = 50, pos = 0, isOpen = false, dragging = false;
+    function activeIdx(){ var k = -1; wrows.forEach(function(el,i){ if(el.classList.contains("active")) k = i; }); return k; }
+    function paint(){
+      if(!wheel) return;
+      var act = activeIdx();
+      var showCustom = !isOpen && act < 0;
+      var nearIdx = isOpen ? Math.round(pos) : act;
+      wrows.forEach(function(el,i){
+        var off = i - pos, a = Math.abs(off), y, sc, op;
+        if(isOpen){ y = off*ROWH; sc = 1 - Math.min(a,3)*0.06; op = a>2.5 ? 0 : Math.max(0, 1 - a*0.3); }
+        else { y = 0; sc = 0.94; op = (i===act) ? 1 : 0; if(i===act) sc = 1; }
+        el.style.transform = "translateY(" + y + "px) scale(" + sc + ")";
+        el.style.opacity = String(op);
+        el.style.zIndex = String(30 - Math.round(a*4));
+        el.style.pointerEvents = op > 0.05 ? "auto" : "none";
+        el.classList.toggle("near", i === nearIdx);
+        el.setAttribute("aria-checked", i === act ? "true" : "false");
       });
+      if(customRow){
+        customRow.style.transform = "translateY(0) scale(1)";
+        customRow.style.opacity = showCustom ? "1" : "0";
+        customRow.style.zIndex = "31";
+        customRow.style.pointerEvents = showCustom ? "auto" : "none";
+        customRow.classList.toggle("near", showCustom);
+      }
+    }
+    function setOpen(v){ isOpen = v; if(stack) stack.classList.toggle("open", v); paint(); }
+    function syncWheel(){ if(!wheel) return; if(!isOpen){ pos = Math.max(0, activeIdx()); } paint(); }
+    function commit(i){
+      i = Math.max(0, Math.min(wrows.length-1, i)); pos = i;
+      if(i !== activeIdx()) wrows[i].click();
+    }
+    if(wheel){
+      var startY = 0, startPos = 0, moved = false, wasOpen = false, downRow = null;
+      // real mouse/touch clicks are handled by the pointer events below; keyboard/programmatic clicks pass through
+      wheel.addEventListener("click", function(e){ if(e.isTrusted && e.detail > 0){ e.stopPropagation(); e.preventDefault(); } }, true);
+      wheel.addEventListener("pointerdown", function(e){
+        if(e.button > 0) return;
+        wasOpen = isOpen; startY = e.clientY; startPos = isOpen ? pos : Math.max(0, activeIdx()); pos = startPos;
+        moved = false; dragging = true; downRow = e.target.closest ? e.target.closest(".range-row") : null;
+        try{ wheel.setPointerCapture(e.pointerId); }catch(_){}
+        if(!isOpen) setOpen(true);
+      });
+      wheel.addEventListener("pointermove", function(e){
+        if(!dragging) return;
+        var dy = e.clientY - startY;
+        if(!moved && Math.abs(dy) < 6) return;
+        moved = true; stack.classList.add("dragging");
+        pos = Math.max(0, Math.min(wrows.length-1, startPos - dy/ROWH));
+        paint();
+      });
+      var endPress = function(){
+        if(!dragging) return;
+        dragging = false; stack.classList.remove("dragging");
+        if(moved){ commit(Math.round(pos)); setOpen(false); }
+        else if(wasOpen){ var i = wrows.indexOf(downRow); if(i >= 0) commit(i); setOpen(false); }
+      };
+      wheel.addEventListener("pointerup", endPress);
+      wheel.addEventListener("pointercancel", function(){ dragging = false; stack.classList.remove("dragging"); setOpen(false); syncWheel(); });
+      document.addEventListener("pointerdown", function(e){ if(isOpen && !stack.contains(e.target)){ setOpen(false); syncWheel(); } }, true);
     }
     function refreshUI(){
-      layoutStack();
+      syncWheel();
       var r = opts.getRange();
       fromInput.value = toDateInputValue(r.from);
       toInput.value = toDateInputValue(r.to);
