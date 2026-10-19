@@ -1,5 +1,5 @@
 // เปลี่ยนเลขเวอร์ชันนี้ทุกครั้งที่อัปเดต index.html เพื่อให้เครื่องผู้ใช้โหลดของใหม่
-const VERSION = "dm-v3";
+const VERSION = "dm-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const CDN = [
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
@@ -45,7 +45,7 @@ self.addEventListener("fetch", (e) => {
   if (req.mode === "navigate") {
     e.respondWith((async () => {
       try {
-        const fresh = await fetch(req);
+        const fresh = await fetch(req, { cache: "no-cache" });
         const c = await caches.open(VERSION);
         c.put("./index.html", fresh.clone());
         return fresh;
