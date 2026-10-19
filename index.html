@@ -634,8 +634,84 @@
     .sidebar{padding-top:calc(6px + env(safe-area-inset-top, 0px)); padding-left:calc(16px + env(safe-area-inset-left, 0px)); padding-right:calc(16px + env(safe-area-inset-right, 0px));}
     .content{padding-top:18px; padding-left:calc(18px + env(safe-area-inset-left, 0px)); padding-right:calc(18px + env(safe-area-inset-right, 0px));}
   }
+
+  /* ===== glass mode on every phone AND tablet (iPad portrait + landscape); desktop keeps the side menu ===== */
+  html.dm-glass .dm-root{flex-direction:column;}
+  html.dm-glass .dm-root .sidebar, html.dm-glass .dm-root.sidebar-collapsed .sidebar{
+    width:100%; height:auto; position:relative; flex-direction:row; flex-wrap:wrap; align-items:center; opacity:1; overflow:visible;
+    padding-top:calc(6px + env(safe-area-inset-top, 0px)); padding-bottom:10px;
+    padding-left:calc(16px + env(safe-area-inset-left, 0px)); padding-right:calc(16px + env(safe-area-inset-right, 0px));
+  }
+  html.dm-glass .brand{margin-bottom:0; flex:1;}
+  html.dm-glass .sidebar .tagline{display:none;}
+  html.dm-glass .dm-nav{display:none;}
+  html.dm-glass .sidebar-toggle-btn{display:none;}
+  html.dm-glass .sidebar-footer{display:flex; width:100%; margin:0; padding:8px 0 0; border-top:none; gap:6px; align-items:center;}
+  html.dm-glass .sidebar-footer .clock-corner{display:none;}
+  html.dm-glass .sidebar-footer .gps-chip{flex:1; min-width:0; margin:0 !important; font-size:11px; padding:6px 8px; gap:6px;}
+  html.dm-glass .sidebar-footer .gps-chip span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  html.dm-glass .content{padding-top:18px; padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px)); padding-left:calc(22px + env(safe-area-inset-left, 0px)); padding-right:calc(22px + env(safe-area-inset-right, 0px));}
+  html.dm-glass .page-head{padding-right:0;}
+  html.dm-glass .toast{bottom:calc(104px + env(safe-area-inset-bottom, 0px));}
+  html.dm-glass .install-btn{position:fixed; right:14px; bottom:calc(100px + env(safe-area-inset-bottom, 0px)) !important; z-index:900; margin:0; box-shadow:0 4px 14px rgba(0,0,0,0.25); border-radius:999px; padding:10px 16px;}
+  @media (min-width: 881px){
+    html.dm-glass .sidebar-footer{width:auto; padding:0; flex:0 0 auto;}
+    html.dm-glass .sidebar-footer .gps-chip{flex:0 0 auto;}
+    html.dm-glass .sidebar-footer .gps-chip span:last-child{overflow:visible;}
+    html.dm-glass .glass-tabbar{width:min(calc(100% - 28px), 500px); height:72px;}
+    html.dm-glass .glass-tabbar.compact{width:min(calc(100% - 90px), 330px); height:54px;}
+    html.dm-glass .gt-tab{font-size:11.5px;}
+  }
+  html.dm-glass .glass-tabbar{
+    display:flex; position:fixed; left:50%; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); z-index:1500;
+    width:min(calc(100% - 28px), 430px); height:68px; padding:6px; border-radius:36px; box-sizing:border-box;
+    transform:translateX(-50%);
+    background:linear-gradient(140deg, rgba(255,255,255,0.62), rgba(255,255,255,0.26));
+    -webkit-backdrop-filter:blur(26px) saturate(190%) brightness(1.04); backdrop-filter:blur(26px) saturate(190%) brightness(1.04);
+    border:1px solid rgba(255,255,255,0.7);
+    box-shadow:0 14px 34px rgba(18,48,30,0.28), 0 2px 6px rgba(18,48,30,0.12),
+               inset 0 1.5px 0 rgba(255,255,255,0.95), inset 0 -1.5px 0 rgba(255,255,255,0.35), inset 0 0 18px rgba(255,255,255,0.28);
+    transition:width .5s cubic-bezier(.34,1.4,.64,1), height .5s cubic-bezier(.34,1.4,.64,1), bottom .5s cubic-bezier(.34,1.4,.64,1), border-radius .5s ease;
+    -webkit-tap-highlight-color:transparent; touch-action:pan-y; user-select:none; -webkit-user-select:none;
+  }
+  html.dm-glass .glass-tabbar::before{content:""; position:absolute; left:14%; right:14%; top:2px; height:38%; border-radius:30px; pointer-events:none; background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); opacity:.7;}
+  html.dm-glass .gt-lens{
+    position:absolute; left:0; top:6px; height:calc(100% - 12px); width:0; border-radius:30px; pointer-events:none;
+    background:linear-gradient(160deg, rgba(255,255,255,0.95), rgba(255,255,255,0.55));
+    -webkit-backdrop-filter:blur(8px) saturate(160%); backdrop-filter:blur(8px) saturate(160%);
+    box-shadow:0 6px 16px rgba(18,48,30,0.2), inset 0 1.5px 0 #fff, inset 0 -2px 6px rgba(31,77,54,0.12);
+    transition:transform .55s cubic-bezier(.34,1.45,.5,1), width .55s cubic-bezier(.34,1.45,.5,1), height .4s ease, top .4s ease; will-change:transform;
+  }
+  html.dm-glass .glass-tabbar.dragging .gt-lens{transition:transform .12s ease-out, width .2s ease;}
+  html.dm-glass .gt-tab{
+    position:relative; z-index:1; flex:1; min-width:0; border:none; background:transparent; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:0;
+    color:#5B6B5F; font-family:'Prompt',sans-serif; font-size:10.5px; font-weight:500; transition:color .25s ease;
+  }
+  html.dm-glass .gt-tab svg{width:25px; height:25px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform .4s cubic-bezier(.34,1.8,.5,1);}
+  html.dm-glass .gt-tab .gt-lb{line-height:1; max-height:14px; overflow:hidden; transition:opacity .25s ease, max-height .35s ease;}
+  html.dm-glass .gt-tab.active{color:var(--carrot); font-weight:600;}
+  html.dm-glass .gt-tab.active svg{transform:translateY(-1px) scale(1.06);}
+  html.dm-glass .gt-tab.hover{color:var(--carrot);}
+  html.dm-glass .gt-tab.pop svg{animation:gtPop .5s cubic-bezier(.34,1.8,.5,1);}
+  html.dm-glass .glass-tabbar.compact{width:min(calc(100% - 90px), 300px); height:52px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); border-radius:28px;}
+  html.dm-glass .glass-tabbar.compact .gt-lb{opacity:0; max-height:0;}
+  html.dm-glass .glass-tabbar.compact .gt-lens{top:5px; height:calc(100% - 10px); border-radius:24px;}
+  html.dm-glass .glass-tabbar.compact .gt-tab svg{width:23px; height:23px;}
 </style>
 
+<script>
+(function(){
+  var root = document.documentElement;
+  function glassOn(){
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var touch = window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    return window.innerWidth <= 880 || ios || touch;
+  }
+  function apply(){ root.classList.toggle("dm-glass", glassOn()); }
+  apply(); window.addEventListener("resize", apply); window.addEventListener("orientationchange", apply);
+})();
+</script>
 <div class="dm-root">
   <aside class="sidebar">
     <div class="brand">
