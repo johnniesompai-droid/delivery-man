@@ -523,9 +523,10 @@
 
   .dot.warn{background:#E8A23C; box-shadow:0 0 0 3px rgba(232,162,60,0.25);}
   .login-overlay{position:fixed; inset:0; background:var(--bg, #EEF2E9); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;}
-  .login-card{background:#fff; border-radius:16px; padding:24px; width:100%; max-width:360px; box-shadow:0 12px 40px rgba(0,0,0,0.18);}
-  .login-card label{display:block; font-size:13px; font-weight:500; margin:0 0 4px;}
-  .login-card input{width:100%;}
+  .login-card{background:#fff; border-radius:16px; padding:28px 24px; width:100%; max-width:420px; box-shadow:0 12px 40px rgba(0,0,0,0.18);}
+  .login-card label{display:block; font-size:15px; font-weight:600; margin:0 0 6px;}
+  .login-card input{width:100%; height:54px; padding:0 16px; font-size:18px; border-radius:12px; box-sizing:border-box;}
+  .login-card .btn{height:54px; font-size:17px; border-radius:12px;}
 
   .toast{
     position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -851,7 +852,7 @@
     <input type="text" id="login-email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
     <label style="margin-top:10px;">รหัสผ่าน</label>
     <input type="password" id="login-pass" autocomplete="current-password" required>
-    <p id="login-error" style="color:#B8402E; font-size:13px; min-height:18px; margin:10px 0 0;"></p>
+    <p id="login-error" style="color:#B8402E; font-size:14px; min-height:20px; margin:12px 0 4px;"></p>
     <button type="submit" class="btn btn-primary" id="login-submit" style="width:100%; justify-content:center; margin-top:6px;">เข้าสู่ระบบ</button>
   </form>
 </div>
