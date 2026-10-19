@@ -701,10 +701,43 @@
 
   /* iPad (large touch screens): sit the glass bar lower, closer to the bottom edge */
   @media (min-width: 700px) and (min-height: 600px){
-    html.dm-glass .glass-tabbar{bottom:2px;}
-    html.dm-glass .glass-tabbar.compact{bottom:0px;}
+    html.dm-glass .glass-tabbar{bottom:3px;}
+    html.dm-glass .glass-tabbar.compact{bottom:3px;}
     html.dm-glass .toast{bottom:84px;}
     html.dm-glass .install-btn{bottom:84px !important;}
+  }
+
+  /* ===== slide switch (green = on, red = off) ===== */
+  .dm-switch{
+    position:relative; width:64px; height:34px; border-radius:999px; border:none; padding:0; cursor:pointer; flex-shrink:0;
+    background:linear-gradient(180deg,#EC5A5F,#CF3C42); -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+    --x:0px; --s:1;
+  }
+  .dm-switch::before{content:""; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(180deg,#22CC93,#0DB87E); opacity:0; transition:opacity .3s ease;}
+  .dm-switch::after{content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:1;
+    box-shadow:inset 0 3px 6px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(255,255,255,0.28), 0 1px 2px rgba(0,0,0,0.15);}
+  .dm-switch[aria-checked="true"]{--x:30px;}
+  .dm-switch[aria-checked="true"]::before{opacity:1;}
+  .dm-switch:active{--s:1.08;}
+  .dm-switch:focus-visible{outline:3px solid rgba(13,184,126,0.45); outline-offset:2px;}
+  .dm-switch .knob{
+    position:absolute; z-index:2; top:3px; left:3px; width:28px; height:28px; border-radius:50%;
+    background:radial-gradient(circle at 50% 50%, #F4F4F2 0 58%, #FFFFFF 62%);
+    box-shadow:0 3px 7px rgba(0,0,0,0.32), 0 0 0 1px rgba(0,0,0,0.04);
+    display:flex; align-items:center; justify-content:center; color:#D8393F;
+    transform:translateX(var(--x)) scale(var(--s)); transition:transform .38s cubic-bezier(.34,1.5,.5,1), color .25s ease;
+  }
+  .dm-switch[aria-checked="true"] .knob{color:#0A9E6C;}
+  .dm-switch .knob svg{width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
+  .switch-row{display:inline-flex; align-items:center; gap:10px; padding:5px 16px 5px 6px; border-radius:999px; background:var(--surface-2, #F4F7F1); border:1px solid var(--line, #DDE3D6);}
+  .switch-label{font-size:14px; font-weight:600; color:var(--ink, #20261C);}
+  .map-switch-wrap{
+    position:absolute; top:10px; right:10px; z-index:1000; display:flex; align-items:center; gap:8px; padding:5px 6px 5px 12px; border-radius:999px;
+    background:rgba(255,255,255,0.88); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); box-shadow:0 3px 12px rgba(0,0,0,0.2);
+  }
+  .map-switch-label{font-size:12.5px; font-weight:600; color:var(--ink, #20261C);}
+  #dm-map-wrap.fullscreen .map-switch-wrap, #picker-map-wrap.fullscreen .map-switch-wrap{
+    top:calc(26px + env(safe-area-inset-top, 0px)); right:calc(26px + env(safe-area-inset-right, 0px));
   }
 </style>
 
@@ -858,12 +891,11 @@
             <div style="display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm" id="btn-geocode">🔍 ค้นหาพิกัดจากที่อยู่</button>
               <button class="btn btn-ghost btn-sm" id="btn-use-gps">📍 ใช้ตำแหน่งปัจจุบัน</button>
-              <button class="btn btn-ghost btn-sm" id="btn-expand-picker">⛶ ขยายแผนที่เต็มจอ</button>
             </div>
             <p class="hint">หรือลากหมุดในแผนที่ด้านล่างเพื่อระบุตำแหน่งให้ตรงจริง (ข้ามได้หากยังไม่ทราบพิกัด)</p>
             <div id="picker-map-wrap">
               <div id="dm-picker-map"></div>
-              <button class="map-fullscreen-btn" id="btn-shrink-picker" style="display:none;" title="ย่อแผนที่">✕ ปิดแผนที่เต็มจอ</button>
+              <div class="map-switch-wrap"><span class="map-switch-label">เต็มจอ</span><button type="button" class="dm-switch" id="sw-fs-picker" role="switch" aria-checked="false" aria-label="ขยายแผนที่เต็มจอ"><span class="knob"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span></button></div>
             </div>
           </div>
 
@@ -954,9 +986,8 @@
       </div>
       <p class="hint" id="delivery-range-span-label" style="margin-bottom:12px;"></p>
       <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-        <button class="btn btn-carrot" id="btn-toggle-gps">🚚 เริ่มติดตาม GPS</button>
+        <div class="switch-row"><button type="button" class="dm-switch" id="btn-toggle-gps" role="switch" aria-checked="false" aria-label="ติดตาม GPS"><span class="knob"><svg viewBox="0 0 24 24"><path d="M12 3l7 17-7-4-7 4 7-17z"/></svg></span></button><span class="switch-label">🚚 ติดตาม GPS</span></div>
         <button class="btn btn-ghost" id="btn-fit-map">🔎 ดูออเดอร์ทั้งหมด</button>
-        <button class="btn btn-ghost" id="btn-expand-map">⛶ ขยายแผนที่เต็มจอ</button>
         <button class="btn btn-primary" id="btn-share-list">📤 แชร์รายชื่อเป็นรูปภาพ</button>
       </div>
       <div class="filter-tabs" id="filter-tabs">
@@ -974,7 +1005,7 @@
         </div>
         <div id="dm-map-wrap">
           <div id="dm-map"></div>
-          <button class="map-fullscreen-btn" id="btn-shrink-map" style="display:none;" title="ย่อแผนที่">✕ ปิดแผนที่เต็มจอ</button>
+          <div class="map-switch-wrap"><span class="map-switch-label">เต็มจอ</span><button type="button" class="dm-switch" id="sw-fs-map" role="switch" aria-checked="false" aria-label="ขยายแผนที่เต็มจอ"><span class="knob"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span></button></div>
         </div>
       </div>
     </section>
@@ -1006,7 +1037,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-5</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-7</p>
     </section>
 
   </main>
@@ -1923,33 +1954,21 @@
     }, function(){ toast("ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS"); });
   });
 
-  // ---------- picker map fullscreen toggle ----------
-  function setPickerFullscreen(on){
-    var wrap = document.getElementById("picker-map-wrap");
-    var expandBtn = document.getElementById("btn-expand-picker");
-    var shrinkBtn = document.getElementById("btn-shrink-picker");
-    wrap.classList.toggle("fullscreen", on);
-    shrinkBtn.style.display = on ? "block" : "none";
-    expandBtn.style.display = on ? "none" : "inline-flex";
-    document.body.style.overflow = on ? "hidden" : "";
-    setTimeout(function(){ if(pickerMap) pickerMap.invalidateSize(); }, 80);
+  // ---------- slide switches ----------
+  function setSwitch(el, on){ if(el) el.setAttribute("aria-checked", on ? "true" : "false"); }
+  function isSwitchOn(el){ return el.getAttribute("aria-checked") === "true"; }
+  function bindFullscreenSwitch(swId, wrapId, getMap){
+    var sw = document.getElementById(swId), wrap = document.getElementById(wrapId);
+    function apply(on){
+      setSwitch(sw, on);
+      wrap.classList.toggle("fullscreen", on);
+      document.body.style.overflow = on ? "hidden" : "";
+      setTimeout(function(){ var m = getMap(); if(m) m.invalidateSize(); }, 80);
+    }
+    sw.addEventListener("click", function(){ apply(!isSwitchOn(sw)); });
   }
-  document.getElementById("btn-expand-picker").addEventListener("click", function(){ setPickerFullscreen(true); });
-  document.getElementById("btn-shrink-picker").addEventListener("click", function(){ setPickerFullscreen(false); });
-
-  // ---------- delivery map fullscreen toggle ----------
-  function setDeliveryMapFullscreen(on){
-    var wrap = document.getElementById("dm-map-wrap");
-    var expandBtn = document.getElementById("btn-expand-map");
-    var shrinkBtn = document.getElementById("btn-shrink-map");
-    wrap.classList.toggle("fullscreen", on);
-    shrinkBtn.style.display = on ? "block" : "none";
-    expandBtn.style.display = on ? "none" : "inline-flex";
-    document.body.style.overflow = on ? "hidden" : "";
-    setTimeout(function(){ if(map) map.invalidateSize(); }, 80);
-  }
-  document.getElementById("btn-expand-map").addEventListener("click", function(){ setDeliveryMapFullscreen(true); });
-  document.getElementById("btn-shrink-map").addEventListener("click", function(){ setDeliveryMapFullscreen(false); });
+  bindFullscreenSwitch("sw-fs-picker", "picker-map-wrap", function(){ return pickerMap; });
+  bindFullscreenSwitch("sw-fs-map", "dm-map-wrap", function(){ return map; });
 
   function clearOrderForm(){
     document.getElementById("f-name").value = "";
@@ -2575,13 +2594,13 @@
     if(watchId === null){
       if(!navigator.geolocation){ toast("อุปกรณ์นี้ไม่รองรับ GPS"); return; }
       watchId = navigator.geolocation.watchPosition(onGpsUpdate, onGpsError, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
-      btn.textContent = "⏹ หยุดติดตาม GPS";
+      setSwitch(btn, true);
       document.getElementById("dm-gps-dot").classList.add("live");
       document.getElementById("dm-gps-label").textContent = "กำลังติดตามตำแหน่ง...";
     } else {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
-      btn.textContent = "🚚 เริ่มติดตาม GPS";
+      setSwitch(btn, false);
       document.getElementById("dm-gps-dot").classList.remove("live");
       document.getElementById("dm-gps-label").textContent = "GPS ปิดอยู่";
     }
@@ -2611,6 +2630,10 @@
   }
   function onGpsError(){
     toast("อ่านตำแหน่ง GPS ไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง");
+    if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+    setSwitch(document.getElementById("btn-toggle-gps"), false);
+    document.getElementById("dm-gps-dot").classList.remove("live");
+    document.getElementById("dm-gps-label").textContent = "GPS ปิดอยู่";
   }
 
   // ---------- summary page ----------
