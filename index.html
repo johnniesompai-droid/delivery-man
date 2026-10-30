@@ -373,6 +373,32 @@
   .summary-grand{background:var(--green); color:#fff; border-radius:var(--radius); padding:18px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
   .summary-grand .lbl{font-size:14px; font-weight:600;}
   .summary-grand .val{font-family:'Prompt',sans-serif; font-size:24px; font-weight:700;}
+  .summary-size-row .l b{font-weight:inherit;}
+  /* phone only (iPad/desktop keep the table layout): two-line cards, nothing squeezed into narrow columns */
+  @media (max-width: 600px){
+    .summary-col-header{display:none;}
+    .summary-veg-card{padding:14px 14px 6px;}
+    .summary-veg-card .veg-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;}
+    .summary-veg-card .veg-head h3{font-size:17px; flex:1 1 auto; min-width:0;}
+    .summary-veg-card .veg-head .total-kg{justify-self:auto; flex:0 0 auto; font-size:14px; padding:5px 14px; white-space:nowrap;}
+    .summary-size-row{grid-template-columns:1fr auto; grid-template-areas:"l r" "s d"; row-gap:8px; column-gap:10px; padding:12px 0; align-items:center;}
+    .summary-size-row .l{grid-area:l; color:var(--ink); font-size:15px; white-space:nowrap;}
+    .summary-size-row .l .sz{font-weight:700;}
+    .summary-size-row .l .qty{font-weight:700; color:var(--green); font-size:16px;}
+    .summary-size-row .r{grid-area:r; border-left:none; padding-left:0; margin-left:0; text-align:right; font-size:15px; white-space:nowrap;}
+    .summary-size-row .stocktot, .summary-size-row .diff{border-left:none; margin-left:0; padding:5px 10px; border-radius:10px; font-size:13px; text-align:left; white-space:nowrap; background:var(--surface-2);}
+    .summary-size-row .stocktot{grid-area:s; justify-self:start;}
+    .summary-size-row .diff{grid-area:d; justify-self:end;}
+    .summary-size-row .stocktot::before{content:"สต๊อคทั้งหมด "; font-family:'Prompt',sans-serif; font-weight:500; font-size:12px; color:var(--ink-muted);}
+    .summary-size-row .diff::before{content:"ขาด / เหลือ "; font-family:'Prompt',sans-serif; font-weight:500; font-size:12px; color:var(--ink-muted);}
+    .summary-size-row .diff.short{background:rgba(198,40,40,.10);}
+    .summary-size-row .diff.ok{background:var(--green-pale);}
+    .summary-size-row .stocktot.none, .summary-size-row .diff.none{opacity:1;}
+    .summary-size-row .stocktot.none, .summary-size-row .diff.none{color:var(--ink-muted);}
+    .summary-size-row .diff.short::after{content:" ถุง"; font-family:'Prompt',sans-serif; font-size:12px;}
+    .summary-size-row .diff.ok::after, .summary-size-row .diff.zero::after{content:" ถุง"; font-family:'Prompt',sans-serif; font-size:12px;}
+    .summary-grand{padding:16px 18px;}
+  }
 
   /* ===== Chart controls ===== */
   .range-controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px;}
@@ -1040,7 +1066,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-14</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-15</p>
     </section>
 
   </main>
@@ -2731,7 +2757,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-14";
+  var APP_VERSION = "ui-15";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
@@ -2870,7 +2896,7 @@
         var stockTotHtml = sz.stockTotal === null
           ? '<span class="stocktot none">–</span>'
           : '<span class="stocktot">' + sz.stockTotal + ' ถุง</span>';
-        return '<div class="summary-size-row"><span class="l">' + sz.size + ' — ' + sz.qty + ' ถุง</span><span class="r">' + kg(sz.kg) + '</span>' + stockTotHtml + diffHtml + '</div>';
+        return '<div class="summary-size-row"><span class="l"><b class="sz">' + sz.size + '</b> — <b class="qty">' + sz.qty + '</b> ถุง</span><span class="r">' + kg(sz.kg) + '</span>' + stockTotHtml + diffHtml + '</div>';
       }).join("");
       html += '<div class="summary-veg-card"><div class="veg-head"><h3>' + esc(veg.vegName) + '</h3><span class="total-kg">' + kg(veg.totalKg) + '</span></div>' + sizeLines + '</div>';
     });
