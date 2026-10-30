@@ -396,6 +396,21 @@
   .summary-size-row .diff.zero{color:var(--ink-muted);}
   .summary-size-row .diff.ok{color:var(--green);}
   .summary-size-row .diff.none{color:var(--ink-muted); opacity:.4;}
+  .seg{display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--line); padding:4px; border-radius:14px; margin-bottom:14px;}
+  .seg-btn{flex:1; border:none; background:transparent; padding:10px 8px; border-radius:10px; font-family:'Prompt',sans-serif; font-size:13.5px; font-weight:600; color:var(--ink-muted); cursor:pointer;}
+  .seg-btn.active{background:#fff; color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.10);}
+  .cv-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+  .cv-head h3{margin:0; font-size:17px;}
+  .cv-head .cv-tot{font-size:12.5px; font-weight:600; color:var(--green); background:var(--green-pale); padding:5px 12px; border-radius:20px;}
+  .cv-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px dashed var(--line);}
+  .cv-row:first-of-type{border-top:none;}
+  .cv-main{flex:1; min-width:0;}
+  .cv-name{font-size:14.5px; font-weight:700; color:var(--ink); word-break:break-word;}
+  .cv-meta{font-size:12.5px; color:var(--ink-muted); margin-top:2px;}
+  .cv-meta b{color:var(--green);}
+  .cv-time{font-size:11px; color:var(--ink-muted); opacity:.85; margin-top:2px;}
+  .cv-amt{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px; color:var(--ink); white-space:nowrap;}
+  .cv-edit{border:1px solid var(--line); background:var(--surface-2); border-radius:10px; padding:8px 12px; font-family:'Prompt',sans-serif; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; color:var(--ink);}
   .summary-grand{background:var(--green); color:#fff; border-radius:var(--radius); padding:18px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
   .summary-grand .lbl{font-size:14px; font-weight:600;}
   .summary-grand .val{font-family:'Prompt',sans-serif; font-size:24px; font-weight:700;}
@@ -1020,7 +1035,8 @@
         <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="summary-range-to" style="width:150px;">
       </div>
       <p class="hint" id="summary-range-span-label" style="margin-bottom:12px;"></p>
-      <div style="margin-bottom:14px;"><button class="btn btn-primary" id="btn-share-summary">📤 แชร์สรุปเป็นรูปภาพ</button></div>
+      <div class="seg" id="summary-seg"><button type="button" class="seg-btn active" data-view="total">📊 สรุปยอดรวม</button><button type="button" class="seg-btn" data-view="customers">👥 แยกตามลูกค้า</button></div>
+      <div id="summary-share-wrap" style="margin-bottom:14px;"><button class="btn btn-primary" id="btn-share-summary">📤 แชร์สรุปเป็นรูปภาพ</button></div>
       <div id="summary-content"></div>
     </section>
 
@@ -1093,7 +1109,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-18</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-19</p>
     </section>
 
   </main>
@@ -2876,7 +2892,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-18";
+  var APP_VERSION = "ui-19";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
@@ -2989,8 +3005,50 @@
   }
 
   // ---------- summary page ----------
+  var summaryView = "total";
+  function renderSummaryCustomers(wrap){
+    var ords = activeOrders().filter(function(o){ return o.createdAt >= summaryRange.from && o.createdAt <= summaryRange.to; });
+    var map = {}, keys = [];
+    ords.forEach(function(o){
+      o.items.forEach(function(it){
+        var key = it.vegId ? ("id:" + it.vegId) : ("name:" + it.vegName);
+        if(!map[key]){ map[key] = {vegName: it.vegName, lines: []}; keys.push(key); }
+        map[key].lines.push({o: o, it: it});
+      });
+    });
+    if(keys.length === 0){ wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>'; return; }
+    var html = '<p class="hint" style="margin-bottom:14px;">💡 ใช้ตรวจว่าแต่ละชนิดผักมีใครสั่งบ้าง ถ้าคีย์ผิดชนิด กด ✏️ แก้ไข แล้วแก้ในหน้าต่างที่เด้งขึ้นมาได้เลย (ยอดเงินในรายการ = ราคาปกติก่อนหักส่วนลดโปร)</p>';
+    keys.forEach(function(key){
+      var g = map[key];
+      g.lines.sort(function(a, b){ return (sizeWeight(a.it.size) - sizeWeight(b.it.size)) || String(a.o.customerName || "").localeCompare(String(b.o.customerName || ""), "th"); });
+      var bags = 0, kgSum = 0, amt = 0;
+      var rowsHtml = g.lines.map(function(l){
+        var q = l.it.qty, w = sizeWeight(l.it.size), kgLine = q * w;
+        bags += q; kgSum += kgLine; amt += (l.it.subtotal || 0);
+        return '<div class="cv-row"><div class="cv-main">' +
+          '<div class="cv-name">' + esc(l.o.customerName || "ลูกค้าไม่ระบุชื่อ") + '</div>' +
+          '<div class="cv-meta"><b>' + q + ' ถุง</b> × ' + esc(l.it.size) + ' = ' + kg(kgLine) + '</div>' +
+          '<div class="cv-time">รับ: ' + fmtDateTime(l.o.createdAt) + (l.o.deliveryStatus === "delivered" ? ' · ✓ ส่งแล้ว' : '') + '</div>' +
+          '</div><div class="cv-amt">' + money(l.it.subtotal) + '</div>' +
+          '<button type="button" class="cv-edit" data-id="' + l.o.id + '">✏️ แก้ไข</button></div>';
+      }).join("");
+      html += '<div class="summary-veg-card"><div class="cv-head"><h3>' + esc(g.vegName) + '</h3><span class="cv-tot">' + g.lines.length + ' ราย · ' + bags + ' ถุง · ' + kg(kgSum) + ' · ' + money(amt) + '</span></div>' + rowsHtml + '</div>';
+    });
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".cv-edit").forEach(function(btn){
+      btn.addEventListener("click", function(){ window.dmEditOrder(btn.dataset.id); });
+    });
+  }
+  function applySummaryView(){
+    document.querySelectorAll("#summary-seg .seg-btn").forEach(function(b){ b.classList.toggle("active", b.dataset.view === summaryView); });
+    var sw = document.getElementById("summary-share-wrap"); if(sw) sw.style.display = summaryView === "total" ? "" : "none";
+  }
+  document.querySelectorAll("#summary-seg .seg-btn").forEach(function(b){
+    b.addEventListener("click", function(){ summaryView = b.dataset.view; applySummaryView(); renderSummary(); });
+  });
   function renderSummary(){
     var wrap = document.getElementById("summary-content");
+    if(summaryView === "customers"){ renderSummaryCustomers(wrap); return; }
     var data = collectOrderSummaryData(summaryRange);
     if(data.length === 0){
       wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>';
