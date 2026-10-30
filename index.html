@@ -396,6 +396,18 @@
   .summary-size-row .diff.zero{color:var(--ink-muted);}
   .summary-size-row .diff.ok{color:var(--green);}
   .summary-size-row .diff.none{color:var(--ink-muted); opacity:.4;}
+  .it-cancel{color:var(--red) !important; display:flex; justify-content:space-between; gap:8px;}
+  .it-cancel s{opacity:.75;}
+  .it-cancel-tag{font-size:10.5px; font-weight:700; background:rgba(198,40,40,.12); color:var(--red); padding:1px 7px; border-radius:8px; white-space:nowrap; align-self:center;}
+  .items-lines .it-cancel{display:block;}
+  .cv-filters{margin-bottom:10px;}
+  .cv-filter-label{font-size:12px; font-weight:600; color:var(--ink-muted); margin:6px 0 6px;}
+  .cv-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
+  .cv-chips .range-btn{padding:8px 14px; font-size:13px;}
+  .cv-row{flex-wrap:wrap;}
+  .cv-btns{flex:0 0 100%; display:flex; gap:8px; justify-content:flex-end; margin-top:2px;}
+  .cv-cancel{border:1px solid transparent; background:rgba(198,40,40,.10); color:var(--red); border-radius:10px; padding:8px 12px; font-family:'Prompt',sans-serif; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;}
+  .cv-cancel.confirm{background:var(--red); color:#fff;}
   .seg{display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--line); padding:4px; border-radius:14px; margin-bottom:14px;}
   .seg-btn{flex:1; border:none; background:transparent; padding:10px 8px; border-radius:10px; font-family:'Prompt',sans-serif; font-size:13.5px; font-weight:600; color:var(--ink-muted); cursor:pointer;}
   .seg-btn.active{background:#fff; color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.10);}
@@ -1109,7 +1121,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-19</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-20</p>
     </section>
 
   </main>
@@ -1296,6 +1308,8 @@
   }
   function vegById(id){ return vegetables.filter(function(v){ return v.id === id; })[0]; }
   function activeOrders(){ return orders.filter(function(o){ return !o.cancelled; }); }
+  function liveItems(o){ return (o.items || []).filter(function(it){ return !it.cancelled; }); }
+  function cancelledItems(o){ return (o.items || []).filter(function(it){ return it.cancelled; }); }
   function vegSizeKeys(v){
     return Object.keys((v && v.sizes) || {}).sort(function(a,b){ return sizeWeight(a) - sizeWeight(b); });
   }
@@ -1307,7 +1321,7 @@
       ordersToUse = ordersToUse.filter(function(o){ return o.createdAt >= range.from && o.createdAt <= range.to; });
     }
     ordersToUse.forEach(function(o){
-      o.items.forEach(function(it){
+      liveItems(o).forEach(function(it){
         var key = it.vegId ? ("id:" + it.vegId) : ("name:" + it.vegName);
         if(!vegMap[key]){ vegMap[key] = {vegId: it.vegId, vegName: it.vegName, sizes: {}}; vegOrder.push(key); }
         vegMap[key].sizes[it.size] = (vegMap[key].sizes[it.size] || 0) + it.qty;
@@ -1336,7 +1350,7 @@
   function totalOrderedBags(vegId, size){
     var total = 0;
     activeOrders().forEach(function(o){
-      o.items.forEach(function(it){ if(it.vegId === vegId && it.size === size){ total += it.qty; } });
+      liveItems(o).forEach(function(it){ if(it.vegId === vegId && it.size === size){ total += it.qty; } });
     });
     return total;
   }
@@ -1463,10 +1477,11 @@
     }
   }
   function itemsSummary(o){
-    return o.items.map(function(it){ return it.vegName + " " + it.size + " x" + it.qty; }).join(", ");
+    return liveItems(o).map(function(it){ return it.vegName + " " + it.size + " x" + it.qty; }).join(", ");
   }
   function itemsSummaryLines(o){
     return '<div class="items-lines">' + o.items.map(function(it){
+      if(it.cancelled) return '<div class="it-cancel"><s>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</s> <span class="it-cancel-tag">ยกเลิก</span></div>';
       return '<div>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</div>';
     }).join("") + '</div>';
   }
@@ -1884,6 +1899,10 @@
       return {vegId: row.vegId, vegName: v ? v.name : "", size: row.size, qty: qty, unitPrice: price, subtotal: price*qty, promo: promo};
     }).filter(function(it){ return it.qty > 0; });
 
+    var r = totalsFromItems(items, promoOn);
+    return {items: items, normalTotal: r.normalTotal, total: r.total, discount: r.discount};
+  }
+  function totalsFromItems(items, promoOn){
     var normalTotal = items.reduce(function(s,it){ return s + it.subtotal; }, 0);
     var total = normalTotal, discount = 0;
 
@@ -1904,7 +1923,7 @@
         discount = normalTotal - total;
       }
     }
-    return {items: items, normalTotal: normalTotal, total: total, discount: discount};
+    return {normalTotal: normalTotal, total: total, discount: discount};
   }
 
   function updateOrderTotal(){
@@ -2092,7 +2111,7 @@
       if(pickerMap) pickerMap._selected = null;
     }
 
-    itemRows = o.items.map(function(it){
+    itemRows = liveItems(o).map(function(it){
       itemRowSeq++;
       return {rowId: itemRowSeq, vegId: it.vegId, size: it.size, qty: String(it.qty)};
     });
@@ -2116,7 +2135,7 @@
     if(o.cancelled){ toast("ออเดอร์นี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขได้"); return; }
     var oldModal = document.getElementById("edit-order-modal"); if(oldModal) oldModal.remove();
 
-    var rows = o.items.map(function(it){
+    var rows = liveItems(o).map(function(it){
       itemRowSeq++;
       return {rowId: itemRowSeq, vegId: it.vegId, size: it.size, qty: String(it.qty)};
     });
@@ -2138,6 +2157,7 @@
         '<div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="eo-address" rows="2"></textarea></div>' +
         '<h3 style="font-size:13.5px; margin:10px 0 8px;">🥬 รายการผัก</h3>' +
         '<div id="eo-rows"></div>' +
+        (cancelledItems(o).length ? '<p class="hint" style="margin:2px 0 6px;">🚫 ยกเลิกไปแล้ว: ' + cancelledItems(o).map(function(it){ return esc(it.vegName) + ' ' + esc(it.size) + ' x' + it.qty; }).join(", ") + '</p>' : '') +
         '<button type="button" class="btn btn-ghost btn-sm" id="eo-add" style="margin-top:2px;">+ เพิ่มรายการผัก</button>' +
         '<label class="promo-toggle-row" for="eo-promo"><input type="checkbox" id="eo-promo"><span>🔥 ใช้โปรโมชั่น 3 ถุง 100 บาท</span></label>' +
         '<div class="order-total">' +
@@ -2233,7 +2253,7 @@
       o.customerName = name || "ลูกค้าไม่ระบุชื่อ";
       o.phone = $("eo-phone").value.trim();
       o.address = $("eo-address").value.trim();
-      o.items = res.items; o.total = res.total; o.discount = res.discount; o.promoApplied = $("eo-promo").checked;
+      o.items = res.items.concat(cancelledItems(o)); o.total = res.total; o.discount = res.discount; o.promoApplied = $("eo-promo").checked;
       saveOrders();
       var shortage = [];
       res.items.forEach(function(it){
@@ -2275,7 +2295,7 @@
       existingOrder.address = address;
       existingOrder.lat = sel ? sel.lat : null;
       existingOrder.lng = sel ? sel.lng : null;
-      existingOrder.items = res.items;
+      existingOrder.items = res.items.concat(cancelledItems(existingOrder));
       existingOrder.total = res.total;
       existingOrder.discount = res.discount;
       existingOrder.promoApplied = promoOn;
@@ -2477,6 +2497,7 @@
 
   function popupHtml(o){
     var itemsHtml = o.items.map(function(it){
+      if(it.cancelled) return '<div class="it-cancel"><span><s>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</s></span><span class="it-cancel-tag">ยกเลิก</span></div>';
       return '<div><span>' + esc(it.vegName) + ' ' + it.size + ' x' + it.qty + '</span><span>' + money(it.subtotal) + '</span></div>';
     }).join("");
     return '<div class="popup-card">' +
@@ -2711,7 +2732,10 @@
     if(o.address) addLines("ที่อยู่: " + o.address, 13, 400, "#6C7566");
     if(o.lat == null || o.lng == null) addLines("(ไม่ได้ปักหมุดตำแหน่งในแผนที่)", 12, 400, "#8A9284");
     y += 2;
-    o.items.forEach(function(it){ addLines("• " + it.vegName + " " + it.size + " × " + it.qty + " ถุง", 14, 500, "#20261C"); });
+    o.items.forEach(function(it){
+      if(it.cancelled) addLines("• ยกเลิก: " + it.vegName + " " + it.size + " × " + it.qty + " ถุง", 14, 500, "#B8402E");
+      else addLines("• " + it.vegName + " " + it.size + " × " + it.qty + " ถุง", 14, 500, "#20261C");
+    });
     if(o.discount > 0) addLines("ส่วนลดโปรโมชั่น -" + money(o.discount), 13, 600, "#C9922E");
     y += 2;
     addLines("รับ: " + fmtDateTime(o.createdAt) + (o.deliveredAt ? "  ·  ส่ง: " + fmtDateTime(o.deliveredAt) : ""), 12, 400, "#6C7566");
@@ -2892,7 +2916,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-19";
+  var APP_VERSION = "ui-20";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
@@ -3006,23 +3030,44 @@
 
   // ---------- summary page ----------
   var summaryView = "total";
+  var cvVeg = null, cvSize = "all"; // customer view filters: vegetable key (null = first) and size ("all" or e.g. "0.8kg")
   function renderSummaryCustomers(wrap){
     var ords = activeOrders().filter(function(o){ return o.createdAt >= summaryRange.from && o.createdAt <= summaryRange.to; });
     var map = {}, keys = [];
     ords.forEach(function(o){
-      o.items.forEach(function(it){
+      o.items.forEach(function(it, idx){
+        if(it.cancelled) return;
         var key = it.vegId ? ("id:" + it.vegId) : ("name:" + it.vegName);
         if(!map[key]){ map[key] = {vegName: it.vegName, lines: []}; keys.push(key); }
-        map[key].lines.push({o: o, it: it});
+        map[key].lines.push({o: o, it: it, idx: idx});
       });
     });
     if(keys.length === 0){ wrap.innerHTML = '<div class="empty-note">ไม่มีออเดอร์ในช่วงที่เลือก</div>'; return; }
-    var html = '<p class="hint" style="margin-bottom:14px;">💡 ใช้ตรวจว่าแต่ละชนิดผักมีใครสั่งบ้าง ถ้าคีย์ผิดชนิด กด ✏️ แก้ไข แล้วแก้ในหน้าต่างที่เด้งขึ้นมาได้เลย (ยอดเงินในรายการ = ราคาปกติก่อนหักส่วนลดโปร)</p>';
-    keys.forEach(function(key){
+    if(cvVeg !== "all" && (cvVeg === null || !map[cvVeg])){ cvVeg = keys[0]; cvSize = "all"; }
+    var showKeys = cvVeg === "all" ? keys : [cvVeg];
+
+    var html = '<div class="cv-filters"><div class="cv-filter-label">เลือกชนิดผัก</div><div class="cv-chips">' +
+      '<button type="button" class="range-btn' + (cvVeg === "all" ? " active" : "") + '" data-cvveg="all">ทั้งหมด</button>' +
+      keys.map(function(k){ return '<button type="button" class="range-btn' + (cvVeg === k ? " active" : "") + '" data-cvveg="' + esc(k) + '">' + esc(map[k].vegName) + ' (' + map[k].lines.length + ')</button>'; }).join("") +
+      '</div>';
+    if(cvVeg !== "all"){
+      var sizeCount = {};
+      map[cvVeg].lines.forEach(function(l){ sizeCount[l.it.size] = (sizeCount[l.it.size] || 0) + 1; });
+      var sizeKeys = Object.keys(sizeCount).sort(function(x, y){ return sizeWeight(x) - sizeWeight(y); });
+      if(cvSize !== "all" && !sizeCount[cvSize]) cvSize = "all";
+      html += '<div class="cv-filter-label">เลือกขนาดถุง</div><div class="cv-chips">' +
+        '<button type="button" class="range-btn' + (cvSize === "all" ? " active" : "") + '" data-cvsize="all">ทุกขนาด</button>' +
+        sizeKeys.map(function(z){ return '<button type="button" class="range-btn' + (cvSize === z ? " active" : "") + '" data-cvsize="' + esc(z) + '">' + esc(z) + ' (' + sizeCount[z] + ')</button>'; }).join("") +
+        '</div>';
+    }
+    html += '</div><p class="hint" style="margin-bottom:12px;">💡 เรียงจากออเดอร์ล่าสุดไว้บนสุด · กด ✏️ แก้ไข เพื่อแก้ออเดอร์ · กด 🚫 ยกเลิกรายการ เพื่อยกเลิกเฉพาะผักชนิดนั้น (ออเดอร์อื่นๆ ของลูกค้าคนเดิมไม่ถูกยกเลิก) · ยอดเงิน = ราคาปกติก่อนหักส่วนลดโปร</p>';
+
+    showKeys.forEach(function(key){
       var g = map[key];
-      g.lines.sort(function(a, b){ return (sizeWeight(a.it.size) - sizeWeight(b.it.size)) || String(a.o.customerName || "").localeCompare(String(b.o.customerName || ""), "th"); });
+      var lines = g.lines.filter(function(l){ return cvVeg === "all" || cvSize === "all" || l.it.size === cvSize; });
+      lines.sort(function(x, y){ return y.o.createdAt - x.o.createdAt; });
       var bags = 0, kgSum = 0, amt = 0;
-      var rowsHtml = g.lines.map(function(l){
+      var rowsHtml = lines.map(function(l){
         var q = l.it.qty, w = sizeWeight(l.it.size), kgLine = q * w;
         bags += q; kgSum += kgLine; amt += (l.it.subtotal || 0);
         return '<div class="cv-row"><div class="cv-main">' +
@@ -3030,15 +3075,48 @@
           '<div class="cv-meta"><b>' + q + ' ถุง</b> × ' + esc(l.it.size) + ' = ' + kg(kgLine) + '</div>' +
           '<div class="cv-time">รับ: ' + fmtDateTime(l.o.createdAt) + (l.o.deliveryStatus === "delivered" ? ' · ✓ ส่งแล้ว' : '') + '</div>' +
           '</div><div class="cv-amt">' + money(l.it.subtotal) + '</div>' +
-          '<button type="button" class="cv-edit" data-id="' + l.o.id + '">✏️ แก้ไข</button></div>';
+          '<div class="cv-btns"><button type="button" class="cv-edit" data-id="' + l.o.id + '">✏️ แก้ไข</button>' +
+          '<button type="button" class="cv-cancel" data-id="' + l.o.id + '" data-idx="' + l.idx + '">🚫 ยกเลิกรายการ</button></div></div>';
       }).join("");
-      html += '<div class="summary-veg-card"><div class="cv-head"><h3>' + esc(g.vegName) + '</h3><span class="cv-tot">' + g.lines.length + ' ราย · ' + bags + ' ถุง · ' + kg(kgSum) + ' · ' + money(amt) + '</span></div>' + rowsHtml + '</div>';
+      html += '<div class="summary-veg-card"><div class="cv-head"><h3>' + esc(g.vegName) + (cvVeg !== "all" && cvSize !== "all" ? ' <span style="font-weight:500; color:var(--ink-muted); font-size:14px;">' + esc(cvSize) + '</span>' : '') + '</h3><span class="cv-tot">' + lines.length + ' ราย · ' + bags + ' ถุง · ' + kg(kgSum) + ' · ' + money(amt) + '</span></div>' + rowsHtml + '</div>';
     });
     wrap.innerHTML = html;
+    wrap.querySelectorAll("[data-cvveg]").forEach(function(btn){
+      btn.addEventListener("click", function(){ cvVeg = btn.dataset.cvveg; cvSize = "all"; renderSummaryCustomers(wrap); });
+    });
+    wrap.querySelectorAll("[data-cvsize]").forEach(function(btn){
+      btn.addEventListener("click", function(){ cvSize = btn.dataset.cvsize; renderSummaryCustomers(wrap); });
+    });
     wrap.querySelectorAll(".cv-edit").forEach(function(btn){
       btn.addEventListener("click", function(){ window.dmEditOrder(btn.dataset.id); });
     });
+    wrap.querySelectorAll(".cv-cancel").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(!btn.classList.contains("confirm")){
+          btn.classList.add("confirm"); btn.textContent = "ยืนยันยกเลิกรายการนี้?";
+          setTimeout(function(){ if(btn.isConnected){ btn.classList.remove("confirm"); btn.textContent = "🚫 ยกเลิกรายการ"; } }, 3500);
+          return;
+        }
+        window.dmCancelItem(btn.dataset.id, Number(btn.dataset.idx));
+      });
+    });
   }
+  // cancel ONE vegetable line of an order (the rest of the order stays); the order total is recalculated without it
+  window.dmCancelItem = function(orderId, idx){
+    var o = orders.filter(function(x){ return x.id === orderId; })[0];
+    if(!o || !o.items[idx] || o.items[idx].cancelled) return;
+    var it = o.items[idx];
+    it.cancelled = true; it.cancelledAt = Date.now();
+    var live = liveItems(o);
+    var r = totalsFromItems(live, !!o.promoApplied);
+    o.total = r.total; o.discount = r.discount;
+    var wholeOrder = live.length === 0;
+    if(wholeOrder){ o.cancelled = true; o.cancelledAt = Date.now(); }
+    saveOrders();
+    renderStockTable(); renderDashboard(); renderSummary(); renderDeliveryList(); renderMapMarkers(); renderCharts();
+    if(map) map.closePopup();
+    toast(wholeOrder ? "ยกเลิก " + it.vegName + " แล้ว — ออเดอร์นี้ไม่เหลือรายการ จึงถูกยกเลิกทั้งออเดอร์" : "ยกเลิก " + it.vegName + " " + it.size + " ของ " + (o.customerName || "ลูกค้า") + " แล้ว");
+  };
   function applySummaryView(){
     document.querySelectorAll("#summary-seg .seg-btn").forEach(function(b){ b.classList.toggle("active", b.dataset.view === summaryView); });
     var sw = document.getElementById("summary-share-wrap"); if(sw) sw.style.display = summaryView === "total" ? "" : "none";
@@ -3200,7 +3278,7 @@
     var customerSet = {};
     inRange.forEach(function(o){
       customerSet[o.customerName || "ลูกค้าไม่ระบุชื่อ"] = true;
-      o.items.forEach(function(it){
+      liveItems(o).forEach(function(it){
         if(!vegStats[it.vegName]){ vegStats[it.vegName] = {name: it.vegName, bags:0, kg:0, revenue:0}; vegOrder.push(it.vegName); }
         vegStats[it.vegName].bags += it.qty;
         vegStats[it.vegName].kg += it.qty * sizeWeight(it.size);
