@@ -993,7 +993,8 @@
         <label style="margin:0; font-weight:500;">จาก</label><input type="date" id="summary-range-from" style="width:150px;">
         <label style="margin:0; font-weight:500;">ถึง</label><input type="date" id="summary-range-to" style="width:150px;">
       </div>
-      <p class="hint" id="summary-range-span-label" style="margin-bottom:16px;"></p>
+      <p class="hint" id="summary-range-span-label" style="margin-bottom:12px;"></p>
+      <div style="margin-bottom:14px;"><button class="btn btn-primary" id="btn-share-summary">📤 แชร์สรุปเป็นรูปภาพ</button></div>
       <div id="summary-content"></div>
     </section>
 
@@ -1066,7 +1067,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-15</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-16</p>
     </section>
 
   </main>
@@ -2696,12 +2697,12 @@
   var shareObjectUrls = [];
   function closeShareModal(){ var m = document.getElementById("share-modal"); if(m) m.remove(); shareObjectUrls.forEach(function(u){ URL.revokeObjectURL(u); }); shareObjectUrls = []; }
   function downloadShareFiles(files){ files.forEach(function(f, i){ setTimeout(function(){ var u = URL.createObjectURL(f); var a = document.createElement("a"); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); }, i * 400); }); }
-  function showSharePreview(files, title, summaryText){
+  function showSharePreview(files, title, summaryText, modalTitle){
     closeShareModal();
     var canNative = !!(navigator.canShare && navigator.canShare({files:files}));
     var imgsHtml = files.map(function(f){ var u = URL.createObjectURL(f); shareObjectUrls.push(u); return '<img src="' + u + '" alt="' + esc(f.name) + '">'; }).join("");
     var backdrop = document.createElement("div"); backdrop.className = "dm-modal-backdrop"; backdrop.id = "share-modal";
-    backdrop.innerHTML = '<div class="dm-modal"><div class="dm-modal-head"><strong>📤 แชร์รายชื่อเป็นรูปภาพ</strong><button type="button" class="dm-modal-x" id="share-close">✕</button></div>' +
+    backdrop.innerHTML = '<div class="dm-modal"><div class="dm-modal-head"><strong>' + esc(modalTitle || "📤 แชร์รายชื่อเป็นรูปภาพ") + '</strong><button type="button" class="dm-modal-x" id="share-close">✕</button></div>' +
       '<p class="hint" style="margin-bottom:10px;">' + esc(summaryText) + '</p><div class="share-imgs">' + imgsHtml + '</div><div class="dm-modal-actions">' +
       (canNative ? '<button type="button" class="btn btn-primary" id="share-native">📤 แชร์ไปยังไลน์ / เมสเซนเจอร์ / แอพอื่น</button>' : '') +
       '<button type="button" class="btn btn-ghost" id="share-download">💾 บันทึกรูปภาพ</button></div>' +
@@ -2732,6 +2733,86 @@
       .then(function(){ btn.disabled = false; btn.textContent = oldText; });
   });
 
+  // ---------- share order summary as image ----------
+  function renderSummaryPages(data, rangeText){
+    var W = 720, margin = 20, cardW = W - margin * 2, scale = 2, headerH = 104, footerH = 44, maxBody = 1500, grandH = 76;
+    var cards = data.map(function(veg){
+      var h = 16 + 40;
+      veg.sizes.forEach(function(sz){ h += 38 + (sz.stockTotal !== null ? 24 : 0); });
+      return {veg: veg, h: h + 8};
+    });
+    var grandKg = data.reduce(function(s, v){ return s + v.totalKg; }, 0);
+    var pages = [], cur = [], curH = 0;
+    cards.forEach(function(c){
+      if(cur.length && curH + c.h + 12 > maxBody){ pages.push(cur); cur = []; curH = 0; }
+      cur.push(c); curH += c.h + 12;
+    });
+    if(cur.length) pages.push(cur);
+    var nowText = new Date().toLocaleString("th-TH", {day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit"});
+    return pages.map(function(pc, pIdx){
+      var last = pIdx === pages.length - 1;
+      var bodyH = pc.reduce(function(s, c){ return s + c.h + 12; }, 0);
+      var H = headerH + 14 + bodyH + (last ? grandH + 12 : 0) + footerH;
+      var cv = document.createElement("canvas"); cv.width = W * scale; cv.height = H * scale;
+      var ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.textBaseline = "middle";
+      ctx.fillStyle = "#EEF2E9"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#1F4D36"; ctx.fillRect(0, 0, W, headerH);
+      ctx.textAlign = "left"; ctx.fillStyle = "#FFFFFF"; ctx.font = "700 22px " + SHARE_FONT; ctx.fillText("สรุปออเดอร์ผัก", margin, 32);
+      ctx.fillStyle = "#CFE0D3"; ctx.font = "400 13px " + SHARE_FONT; ctx.fillText(rangeText, margin, 58);
+      ctx.fillText("ผัก " + data.length + " ชนิด · น้ำหนักรวม " + kg(grandKg) + (pages.length > 1 ? "   (หน้า " + (pIdx + 1) + "/" + pages.length + ")" : ""), margin, 80);
+      var cy = headerH + 14, right = margin + cardW - 16, left = margin + 22;
+      pc.forEach(function(c){
+        ctx.fillStyle = "#FFFFFF"; roundRectPath(ctx, margin, cy, cardW, c.h, 12); ctx.fill();
+        ctx.save(); roundRectPath(ctx, margin, cy, cardW, c.h, 12); ctx.clip(); ctx.fillStyle = "#1F4D36"; ctx.fillRect(margin, cy, 6, c.h); ctx.restore();
+        ctx.textAlign = "left"; ctx.fillStyle = "#20261C"; ctx.font = "700 19px " + SHARE_FONT; ctx.fillText(c.veg.vegName, left, cy + 36);
+        var pillText = kg(c.veg.totalKg); ctx.font = "700 15px " + SHARE_FONT; var pw = ctx.measureText(pillText).width + 28;
+        ctx.fillStyle = "#DDE9E0"; roundRectPath(ctx, right - pw, cy + 20, pw, 32, 16); ctx.fill();
+        ctx.fillStyle = "#1F4D36"; ctx.textAlign = "center"; ctx.fillText(pillText, right - pw / 2, cy + 37);
+        var ry = cy + 16 + 40;
+        c.veg.sizes.forEach(function(sz, i){
+          if(i > 0){ ctx.strokeStyle = "#E3E9DC"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(left, ry); ctx.lineTo(right, ry); ctx.stroke(); }
+          ctx.textAlign = "left"; ctx.fillStyle = "#20261C"; ctx.font = "600 16px " + SHARE_FONT; ctx.fillText(sz.size + "  —  " + sz.qty + " ถุง", left, ry + 19);
+          ctx.textAlign = "right"; ctx.font = "700 16px " + SHARE_FONT; ctx.fillText(kg(sz.kg), right, ry + 19);
+          var rowH = 38;
+          if(sz.stockTotal !== null){
+            ctx.textAlign = "left"; ctx.fillStyle = "#6C7566"; ctx.font = "400 13px " + SHARE_FONT; ctx.fillText("สต๊อคทั้งหมด " + sz.stockTotal + " ถุง", left, ry + 41);
+            var d = sz.stockDiff, dText, dColor;
+            if(d < 0){ dText = "ขาด " + Math.abs(d) + " ถุง"; dColor = "#B8402E"; }
+            else if(d === 0){ dText = "พอดี (0 ถุง)"; dColor = "#6C7566"; }
+            else { dText = "เหลือ " + d + " ถุง"; dColor = "#1F4D36"; }
+            ctx.textAlign = "right"; ctx.fillStyle = dColor; ctx.font = "700 13px " + SHARE_FONT; ctx.fillText(dText, right, ry + 41);
+            rowH += 24;
+          }
+          ry += rowH;
+        });
+        cy += c.h + 12;
+      });
+      if(last){
+        ctx.fillStyle = "#1F4D36"; roundRectPath(ctx, margin, cy, cardW, grandH, 12); ctx.fill();
+        ctx.textAlign = "left"; ctx.fillStyle = "#FFFFFF"; ctx.font = "600 16px " + SHARE_FONT; ctx.fillText("น้ำหนักรวมทุกชนิดผัก", margin + 20, cy + grandH / 2);
+        ctx.textAlign = "right"; ctx.font = "700 26px " + SHARE_FONT; ctx.fillText(kg(grandKg), margin + cardW - 20, cy + grandH / 2);
+      }
+      ctx.textAlign = "center"; ctx.fillStyle = "#6C7566"; ctx.font = "400 12px " + SHARE_FONT;
+      ctx.fillText("Delivery Man · สร้างเมื่อ " + nowText, W / 2, H - footerH / 2);
+      return cv;
+    });
+  }
+  document.getElementById("btn-share-summary").addEventListener("click", function(){
+    var data = collectOrderSummaryData(summaryRange);
+    if(data.length === 0){ toast("ไม่มีออเดอร์ในช่วงที่เลือกให้แชร์"); return; }
+    var btn = this;
+    var fmtD = function(ts){ return new Date(ts).toLocaleDateString("th-TH", {day:"numeric", month:"short", year:"numeric"}); };
+    var rangeText = "ช่วงที่รับออเดอร์: " + fmtD(summaryRange.from) + " – " + fmtD(summaryRange.to);
+    btn.disabled = true; var oldText = btn.textContent; btn.textContent = "กำลังสร้างรูป...";
+    var fontsReady = (document.fonts && document.fonts.load) ? Promise.all(["400 13px Prompt","600 16px Prompt","700 19px Prompt","700 26px Prompt"].map(function(f){ return document.fonts.load(f); })).catch(function(){}) : Promise.resolve();
+    fontsReady.then(function(){
+      var canvases = renderSummaryPages(data, rangeText);
+      return Promise.all(canvases.map(function(cv, i){ return new Promise(function(resolve, reject){ cv.toBlob(function(b){ if(!b){ reject(new Error("toBlob failed")); return; } resolve(new File([b], "delivery-man-summary-" + (i + 1) + ".png", {type:"image/png"})); }, "image/png"); }); }));
+    }).then(function(files){ showSharePreview(files, "สรุปออเดอร์ผัก", data.length + " ชนิดผัก · " + files.length + " รูป", "📤 แชร์สรุปออเดอร์เป็นรูปภาพ"); })
+      .catch(function(){ toast("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); })
+      .then(function(){ btn.disabled = false; btn.textContent = oldText; });
+  });
+
   // ---------- PWA install ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById("btn-install");
@@ -2757,7 +2838,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-15";
+  var APP_VERSION = "ui-16";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
