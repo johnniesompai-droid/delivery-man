@@ -363,7 +363,7 @@
   .empty-note{color:var(--ink-muted); font-size:13px; padding:14px; text-align:center;}
 
   /* ===== Summary page ===== */
-  #summary-content{max-width:700px;}
+  #summary-content{max-width:none;}
   .summary-veg-card{background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 20px; margin-bottom:14px;}
   .summary-veg-card .veg-head{display:grid; grid-template-columns:1fr 100px 90px 90px; align-items:center; margin-bottom:10px;}
   .summary-veg-card .veg-head h3{margin:0; font-size:16px;}
@@ -400,8 +400,10 @@
   .it-cancel s{opacity:.75;}
   .it-cancel-tag{font-size:10.5px; font-weight:700; background:rgba(198,40,40,.12); color:var(--red); padding:1px 7px; border-radius:8px; white-space:nowrap; align-self:center;}
   .items-lines .it-cancel{display:block;}
-  .cv-list{max-height:min(560px, 62vh); overflow-y:auto; padding-right:2px; scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;}
+  .cv-list{max-height:max(320px, calc(100vh - 300px)); max-height:max(320px, calc(100dvh - 300px)); overflow-y:auto; padding-right:14px; scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;}
   .cv-list::-webkit-scrollbar{width:0; height:0; background:transparent;}
+  .delivery-list-wrap > #cv-scroll-track{right:2px;}
+  @media (max-width:600px){ .cv-list{max-height:none; padding-right:10px;} }
   .cv-filters{margin-bottom:10px;}
   .cv-filter-label{font-size:12px; font-weight:600; color:var(--ink-muted); margin:6px 0 6px;}
   .cv-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
@@ -1123,7 +1125,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-21</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-22</p>
     </section>
 
   </main>
@@ -2918,7 +2920,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-21";
+  var APP_VERSION = "ui-22";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
@@ -3091,6 +3093,16 @@
       }
     });
     wrap.innerHTML = html + (cvVeg === "all" ? cvScroller(cardsHtml) : cardsHtml);
+    function cvFit(){
+      var l = document.getElementById("cv-list"); if(!l) return;
+      if(window.innerWidth <= 600){ l.style.maxHeight = ""; return; }
+      var top = l.getBoundingClientRect().top + (window.pageYOffset || 0);
+      var tb = document.querySelector(".glass-tabbar");
+      var reserve = (tb && tb.offsetHeight ? tb.offsetHeight + 12 : 0) + 34;
+      l.style.maxHeight = Math.max(260, window.innerHeight - top - reserve) + "px";
+    }
+    cvFit(); if(!window.__cvFitBound){ window.__cvFitBound = true; window.addEventListener("resize", function(){ if(window.__cvFit) window.__cvFit(); }); }
+    window.__cvFit = cvFit;
     var cvUpdate = makeScrollIndicator("cv-scroll-track", "cv-scroll-thumb", { getEl: function(){ return document.getElementById("cv-list"); } });
     setTimeout(cvUpdate, 30);
     wrap.querySelectorAll("[data-cvveg]").forEach(function(btn){
