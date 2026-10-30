@@ -1067,7 +1067,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-16</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-17</p>
     </section>
 
   </main>
@@ -2633,6 +2633,18 @@
     if(current) lines.push(current);
     return lines.length ? lines : [""];
   }
+  // some iOS/iPadOS Safari versions ignore ctx.textAlign for right/center text; align by measuring instead
+  function fixTextAlign(ctx){
+    var orig = ctx.fillText.bind(ctx);
+    ctx.fillText = function(t, x, y, mw){
+      var a = ctx.textAlign;
+      if(a === "left" || a === "start"){ orig(t, x, y, mw); return; }
+      var w = ctx.measureText(t).width;
+      ctx.textAlign = "left";
+      orig(t, a === "center" ? x - w / 2 : x - w, y, mw);
+      ctx.textAlign = a;
+    };
+  }
   function roundRectPath(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   function shareStatusInfo(o){
     if(o.cancelled) return {text:"ยกเลิกแล้ว", color:"#8A9284"};
@@ -2676,7 +2688,7 @@
       var bodyH = pageCards.reduce(function(s, c){ return s + c.h + 12; }, 0);
       var H = headerH + 14 + bodyH + footerH;
       var cv = document.createElement("canvas"); cv.width = W * scale; cv.height = H * scale;
-      var ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.textBaseline = "middle";
+      var ctx = cv.getContext("2d"); fixTextAlign(ctx); ctx.scale(scale, scale); ctx.textBaseline = "middle";
       ctx.fillStyle = "#EEF2E9"; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = "#1F4D36"; ctx.fillRect(0, 0, W, headerH);
       ctx.textAlign = "left"; ctx.fillStyle = "#FFFFFF"; ctx.font = "700 22px " + SHARE_FONT; ctx.fillText(title, margin, 32);
@@ -2754,7 +2766,7 @@
       var bodyH = pc.reduce(function(s, c){ return s + c.h + 12; }, 0);
       var H = headerH + 14 + bodyH + (last ? grandH + 12 : 0) + footerH;
       var cv = document.createElement("canvas"); cv.width = W * scale; cv.height = H * scale;
-      var ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.textBaseline = "middle";
+      var ctx = cv.getContext("2d"); fixTextAlign(ctx); ctx.scale(scale, scale); ctx.textBaseline = "middle";
       ctx.fillStyle = "#EEF2E9"; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = "#1F4D36"; ctx.fillRect(0, 0, W, headerH);
       ctx.textAlign = "left"; ctx.fillStyle = "#FFFFFF"; ctx.font = "700 22px " + SHARE_FONT; ctx.fillText("สรุปออเดอร์ผัก", margin, 32);
@@ -2838,7 +2850,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-16";
+  var APP_VERSION = "ui-17";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
