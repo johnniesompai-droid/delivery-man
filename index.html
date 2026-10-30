@@ -265,6 +265,32 @@
   .order-total .row.grand .lbl{font-size:13.5px; color:var(--green); font-weight:700;}
   .order-total .row.grand .val{font-family:'Prompt',sans-serif; font-size:20px; font-weight:700; color:var(--green);}
 
+  /* phone only: price & stock table becomes one card per vegetable (iPad/desktop keep the table) */
+  @media (max-width: 600px){
+    #sub-stock table, #sub-stock tbody{display:block; width:100%;}
+    #sub-stock thead{display:none;}
+    #sub-stock tr{display:grid; grid-template-columns:1.2fr 1fr 46px; gap:10px 12px; align-items:end; padding:12px 14px; border-left:5px solid var(--vc, #4C8C6B);}
+    #sub-stock tr:not(.veg-first){border-top:1px dashed rgba(0,0,0,.14);}
+    #sub-stock tr.veg-first{margin-top:14px; border-top-left-radius:14px; border-top-right-radius:14px;}
+    #sub-stock tr.veg-last{border-bottom-left-radius:14px; border-bottom-right-radius:14px;}
+    #sub-stock td{display:block; padding:0; border:none !important; min-width:0; max-width:none !important;}
+    #sub-stock td[data-label]::before{content:attr(data-label); display:block; font-size:11.5px; font-weight:600; color:var(--ink-muted); margin-bottom:4px;}
+    #sub-stock td.veg-cell, #sub-stock td[colspan]{grid-column:1 / -1; order:0;}
+    #sub-stock .veg-name-cell{flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;}
+    #sub-stock .veg-name-cell > span:first-child{font-size:18px;}
+    #sub-stock .veg-btns{gap:8px;}
+    #sub-stock .veg-btns button{padding:8px 12px; font-size:13px;}
+    #sub-stock td.size-cell{order:1; white-space:nowrap; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:6px;}
+    #sub-stock td.size-cell::before{grid-column:1 / -1;}
+    #sub-stock td.td-price{order:2;}
+    #sub-stock td.td-del{order:3;}
+    #sub-stock td.td-stock{order:4;}
+    #sub-stock td.td-promo{order:5; grid-column:2 / -1;}
+    #sub-stock input[type=number]{width:100% !important; height:44px; font-size:16px; padding:8px 10px;}
+    #sub-stock .size-input{width:100% !important; min-width:0;}
+    #sub-stock .promo-switch{width:100%; height:44px; justify-content:center; white-space:nowrap; font-size:13px;}
+    #sub-stock .del-size-btn{width:44px; height:44px; font-size:16px;}
+  }
   .tabs-sub{display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--line); padding-bottom:0;}
   .tab-sub-btn{
     background:none; border:none; padding:8px 14px; font-size:13.5px; font-weight:600;
@@ -1067,7 +1093,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-17</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-18</p>
     </section>
 
   </main>
@@ -1443,33 +1469,33 @@
     vegetables.forEach(function(v, vIdx){
       var vegColor = VEG_PALETTE[vIdx % VEG_PALETTE.length];
       var vegColorLight = VEG_PALETTE_LIGHT[vIdx % VEG_PALETTE_LIGHT.length];
-      var rowBg = "background:" + vegColorLight + ";";
+      var rowBg = "background:" + vegColorLight + "; --vc:" + vegColor + ";";
       if(!v.sizes) v.sizes = {};
       var sizeKeys = vegSizeKeys(v);
       if(v.hidden){
-        rows.push('<tr class="veg-hidden-row" data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="6" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
+        rows.push('<tr class="veg-hidden-row veg-first veg-last" data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="6" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>🙈 ' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ซ่อนอยู่)</span></span>' +
           '<div class="veg-btns"><button type="button" class="show-veg-btn" data-veg="' + v.id + '">👁 แสดง</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       if(sizeKeys.length === 0){
-        rows.push('<tr data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="6" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
+        rows.push('<tr class="veg-first veg-last" data-veg="' + v.id + '" style="' + rowBg + '"><td colspan="6" style="border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + ' <span style="color:var(--ink-muted); font-weight:400;">(ยังไม่มีขนาดถุง)</span></span>' +
           '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td></tr>');
         return;
       }
       sizeKeys.forEach(function(sz, idx){
         var s = v.sizes[sz];
         var nameCell = idx === 0
-          ? '<td rowspan="' + sizeKeys.length + '" style="max-width:120px; border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
+          ? '<td class="veg-cell" rowspan="' + sizeKeys.length + '" style="max-width:120px; border-left:5px solid ' + vegColor + ';"><div class="veg-name-cell"><span>' + esc(v.name) + '</span>' +
             '<div class="veg-btns"><button type="button" class="add-size-btn" data-veg="' + v.id + '">+ ขนาด</button><button type="button" class="hide-veg-btn" data-veg="' + v.id + '" title="ซ่อนผักชนิดนี้">🙈 ซ่อน</button><button type="button" class="del-veg-btn" data-veg="' + v.id + '" title="ลบชนิดผักนี้">🗑 ลบ</button></div></div></td>'
           : "";
-        var sizeCellStyle = idx === 0 ? ' class="size-cell"' : ' class="size-cell" style="border-left:5px solid ' + vegColor + ';"';
+        var sizeCellStyle = (idx === 0 ? ' class="size-cell"' : ' class="size-cell" style="border-left:5px solid ' + vegColor + ';"') + ' data-label="ขนาดถุง"';
         var stockVal = (s.stock === null || typeof s.stock === "undefined") ? "" : s.stock;
-        rows.push('<tr data-veg="' + v.id + '" data-size="' + sz + '" style="' + rowBg + '">' +
+        rows.push('<tr class="' + (idx === 0 ? "veg-first " : "") + (idx === sizeKeys.length - 1 ? "veg-last" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '" style="' + rowBg + '">' +
           nameCell + '<td' + sizeCellStyle + '><input type="number" min="0.1" step="0.1" class="size-input" value="' + sizeWeight(sz) + '" data-veg="' + v.id + '" data-size="' + sz + '"> กก.</td>' +
-          '<td><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
-          '<td><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
-          '<td><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td>' +
-          '<td><button type="button" class="del-size-btn" data-veg="' + v.id + '" data-size="' + sz + '" title="ลบขนาดนี้">✕</button></td></tr>');
+          '<td class="td-price" data-label="ราคา (฿)"><input type="number" min="0" step="1" class="price-input" value="' + s.price + '"></td>' +
+          '<td class="td-stock" data-label="สต๊อคทั้งหมด"><input type="number" min="0" step="1" class="stock-input" value="' + stockVal + '" placeholder="ยังไม่ทราบ" title="เว้นว่างไว้ถ้ายังไม่ทราบสต๊อค"></td>' +
+          '<td class="td-promo" data-label="โปรโมชั่น"><button type="button" class="promo-switch' + (s.promo ? " on" : "") + '" data-veg="' + v.id + '" data-size="' + sz + '">' + (s.promo ? "🔥 ร่วมโปร 3/100" : "เข้าร่วมโปร 3/100") + '</button></td>' +
+          '<td class="td-del"><button type="button" class="del-size-btn" data-veg="' + v.id + '" data-size="' + sz + '" title="ลบขนาดนี้">✕</button></td></tr>');
       });
     });
     body.innerHTML = rows.length ? rows.join("") : '<tr><td colspan="6"><div class="empty-note">ยังไม่มีชนิดผัก — กดปุ่ม "เพิ่มชนิดผัก" ด้านบน</div></td></tr>';
@@ -2850,7 +2876,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-17";
+  var APP_VERSION = "ui-18";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
