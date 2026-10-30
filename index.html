@@ -400,6 +400,8 @@
   .it-cancel s{opacity:.75;}
   .it-cancel-tag{font-size:10.5px; font-weight:700; background:rgba(198,40,40,.12); color:var(--red); padding:1px 7px; border-radius:8px; white-space:nowrap; align-self:center;}
   .items-lines .it-cancel{display:block;}
+  .cv-list{max-height:min(560px, 62vh); overflow-y:auto; padding-right:2px; scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;}
+  .cv-list::-webkit-scrollbar{width:0; height:0; background:transparent;}
   .cv-filters{margin-bottom:10px;}
   .cv-filter-label{font-size:12px; font-weight:600; color:var(--ink-muted); margin:6px 0 6px;}
   .cv-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
@@ -1121,7 +1123,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-20</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-21</p>
     </section>
 
   </main>
@@ -2916,7 +2918,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-20";
+  var APP_VERSION = "ui-21";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
@@ -3030,6 +3032,7 @@
 
   // ---------- summary page ----------
   var summaryView = "total";
+  function cvScroller(inner){ return '<div class="delivery-list-wrap"><div class="cv-list" id="cv-list">' + inner + '</div><div class="scroll-track" id="cv-scroll-track"><div class="scroll-thumb" id="cv-scroll-thumb"></div></div></div>'; }
   var cvVeg = null, cvSize = "all"; // customer view filters: vegetable key (null = first) and size ("all" or e.g. "0.8kg")
   function renderSummaryCustomers(wrap){
     var ords = activeOrders().filter(function(o){ return o.createdAt >= summaryRange.from && o.createdAt <= summaryRange.to; });
@@ -3062,6 +3065,7 @@
     }
     html += '</div><p class="hint" style="margin-bottom:12px;">💡 เรียงจากออเดอร์ล่าสุดไว้บนสุด · กด ✏️ แก้ไข เพื่อแก้ออเดอร์ · กด 🚫 ยกเลิกรายการ เพื่อยกเลิกเฉพาะผักชนิดนั้น (ออเดอร์อื่นๆ ของลูกค้าคนเดิมไม่ถูกยกเลิก) · ยอดเงิน = ราคาปกติก่อนหักส่วนลดโปร</p>';
 
+    var cardsHtml = "";
     showKeys.forEach(function(key){
       var g = map[key];
       var lines = g.lines.filter(function(l){ return cvVeg === "all" || cvSize === "all" || l.it.size === cvSize; });
@@ -3078,9 +3082,17 @@
           '<div class="cv-btns"><button type="button" class="cv-edit" data-id="' + l.o.id + '">✏️ แก้ไข</button>' +
           '<button type="button" class="cv-cancel" data-id="' + l.o.id + '" data-idx="' + l.idx + '">🚫 ยกเลิกรายการ</button></div></div>';
       }).join("");
-      html += '<div class="summary-veg-card"><div class="cv-head"><h3>' + esc(g.vegName) + (cvVeg !== "all" && cvSize !== "all" ? ' <span style="font-weight:500; color:var(--ink-muted); font-size:14px;">' + esc(cvSize) + '</span>' : '') + '</h3><span class="cv-tot">' + lines.length + ' ราย · ' + bags + ' ถุง · ' + kg(kgSum) + ' · ' + money(amt) + '</span></div>' + rowsHtml + '</div>';
+      var headHtml = '<div class="cv-head"><h3>' + esc(g.vegName) + (cvVeg !== "all" && cvSize !== "all" ? ' <span style="font-weight:500; color:var(--ink-muted); font-size:14px;">' + esc(cvSize) + '</span>' : '') + '</h3><span class="cv-tot">' + lines.length + ' ราย · ' + bags + ' ถุง · ' + kg(kgSum) + ' · ' + money(amt) + '</span></div>';
+      if(cvVeg !== "all"){
+        // single vegetable: filters + card header stay put, only the customer rows scroll
+        cardsHtml += '<div class="summary-veg-card">' + headHtml + cvScroller(rowsHtml) + '</div>';
+      } else {
+        cardsHtml += '<div class="summary-veg-card">' + headHtml + rowsHtml + '</div>';
+      }
     });
-    wrap.innerHTML = html;
+    wrap.innerHTML = html + (cvVeg === "all" ? cvScroller(cardsHtml) : cardsHtml);
+    var cvUpdate = makeScrollIndicator("cv-scroll-track", "cv-scroll-thumb", { getEl: function(){ return document.getElementById("cv-list"); } });
+    setTimeout(cvUpdate, 30);
     wrap.querySelectorAll("[data-cvveg]").forEach(function(btn){
       btn.addEventListener("click", function(){ cvVeg = btn.dataset.cvveg; cvSize = "all"; renderSummaryCustomers(wrap); });
     });
