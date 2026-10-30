@@ -252,6 +252,8 @@
   .item-row .sub{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--green); font-weight:600; padding-bottom:9px;}
   .remove-x{background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:6px;}
 
+  #eo-rows .item-row{position:relative; padding-right:34px;}
+  #eo-rows .remove-x{position:absolute; top:6px; right:6px;}
   .order-total{padding:12px 14px; background:var(--green-pale); border-radius:8px; margin-top:6px;}
   .order-review-list{margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed rgba(31,77,54,0.25);}
   .order-review-list .review-empty{font-size:12px; color:var(--ink-muted); padding:2px 0;}
@@ -1038,7 +1040,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-11</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-14</p>
     </section>
 
   </main>
@@ -1991,7 +1993,7 @@
     toast("ยกเลิกการแก้ไขแล้ว");
   });
 
-  window.dmEditOrder = function(id){
+  window.dmEditOrderFull = function(id){
     var o = orders.filter(function(x){ return x.id === id; })[0];
     if(!o) return;
     if(o.cancelled){ toast("ออเดอร์นี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขได้"); return; }
@@ -2035,6 +2037,150 @@
     document.getElementById("edit-banner-name").textContent = o.customerName || "ลูกค้าไม่ระบุชื่อ";
     setTimeout(function(){ if(pickerMap) pickerMap.invalidateSize(); }, 60);
     toast("กำลังแก้ไขออเดอร์ — แก้ไขแล้วกด \"บันทึกการแก้ไข\"");
+  };
+
+
+  // ---------- quick edit pop-up (from the delivery page) ----------
+  window.dmEditOrder = function(id){
+    var o = orders.filter(function(x){ return x.id === id; })[0];
+    if(!o) return;
+    if(o.cancelled){ toast("ออเดอร์นี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขได้"); return; }
+    var oldModal = document.getElementById("edit-order-modal"); if(oldModal) oldModal.remove();
+
+    var rows = o.items.map(function(it){
+      itemRowSeq++;
+      return {rowId: itemRowSeq, vegId: it.vegId, size: it.size, qty: String(it.qty)};
+    });
+    if(rows.length === 0){
+      itemRowSeq++;
+      var fv = vegetables.filter(function(v){ return !v.hidden; })[0];
+      var fk = fv ? vegSizeKeys(fv) : [];
+      rows.push({rowId: itemRowSeq, vegId: fv ? fv.id : "", size: fk.length ? fk[0] : "", qty: "1"});
+    }
+
+    var b = document.createElement("div");
+    b.className = "dm-modal-backdrop"; b.id = "edit-order-modal";
+    b.innerHTML =
+      '<div class="dm-modal">' +
+        '<div class="dm-modal-head"><strong>✏️ แก้ไขออเดอร์</strong><button type="button" class="dm-modal-x" id="eo-close">✕</button></div>' +
+        '<h3 style="font-size:13.5px; margin:4px 0 8px;">👤 ข้อมูลลูกค้า</h3>' +
+        '<div class="field"><label>ชื่อผู้สั่ง</label><input type="text" id="eo-name" autocomplete="off"></div>' +
+        '<div class="field"><label>เบอร์โทร</label><input type="tel" id="eo-phone"></div>' +
+        '<div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="eo-address" rows="2"></textarea></div>' +
+        '<h3 style="font-size:13.5px; margin:10px 0 8px;">🥬 รายการผัก</h3>' +
+        '<div id="eo-rows"></div>' +
+        '<button type="button" class="btn btn-ghost btn-sm" id="eo-add" style="margin-top:2px;">+ เพิ่มรายการผัก</button>' +
+        '<label class="promo-toggle-row" for="eo-promo"><input type="checkbox" id="eo-promo"><span>🔥 ใช้โปรโมชั่น 3 ถุง 100 บาท</span></label>' +
+        '<div class="order-total">' +
+          '<div class="row"><span>ราคาปกติ</span><span class="mono" id="eo-subtotal">฿0</span></div>' +
+          '<div class="row discount" id="eo-disc-row" style="display:none;"><span>ส่วนลดโปรโมชั่น</span><span class="mono" id="eo-disc">-฿0</span></div>' +
+          '<div class="row grand"><span class="lbl">ยอดรวมทั้งหมด</span><span class="val mono" id="eo-total">฿0</span></div>' +
+        '</div>' +
+        '<div class="dm-modal-actions" style="margin-top:14px;">' +
+          '<button type="button" class="btn btn-primary" id="eo-save" style="flex:1;">💾 บันทึกการแก้ไข</button>' +
+          '<button type="button" class="btn btn-ghost" id="eo-cancel">ยกเลิก</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(b);
+
+    var $ = function(i){ return document.getElementById(i); };
+    $("eo-name").value = (o.customerName === "ลูกค้าไม่ระบุชื่อ") ? "" : (o.customerName || "");
+    $("eo-phone").value = o.phone || "";
+    $("eo-address").value = o.address || "";
+    $("eo-promo").checked = !!o.promoApplied;
+
+    function close(){ b.remove(); }
+    function totals(){
+      var res = computeTotals(rows, $("eo-promo").checked);
+      $("eo-subtotal").textContent = money(res.normalTotal);
+      $("eo-disc-row").style.display = res.discount > 0 ? "flex" : "none";
+      $("eo-disc").textContent = "-" + money(res.discount);
+      $("eo-total").textContent = money(res.total);
+    }
+    function subHtml(row){
+      var v = vegById(row.vegId);
+      var se = (v && v.sizes[row.size]) ? v.sizes[row.size] : null;
+      var q = parseInt(row.qty,10); if(isNaN(q)) q = 0;
+      return money((se ? se.price : 0) * q) + ((se && se.promo) ? '<div style="font-size:10px; color:var(--gold); font-weight:600;">🔥 ร่วมโปร</div>' : '');
+    }
+    function renderRows(){
+      var wrap = $("eo-rows");
+      wrap.innerHTML = rows.map(function(row){
+        var v = vegById(row.vegId) || vegetables[0];
+        var vegOpts = vegetables.filter(function(vv){ return !vv.hidden || vv.id === row.vegId; }).map(function(vv){
+          return '<option value="' + vv.id + '"' + (vv.id===row.vegId?" selected":"") + '>' + esc(vv.name) + (vv.hidden ? " (ซ่อนอยู่)" : "") + '</option>';
+        }).join("");
+        var keys = v ? vegSizeKeys(v) : [];
+        var sizeOpts = keys.length ? keys.map(function(sz){
+          var hp = v.sizes[sz] && v.sizes[sz].promo;
+          return '<option value="' + sz + '"' + (sz===row.size?" selected":"") + '>' + sz + (hp ? " 🔥3/100" : "") + '</option>';
+        }).join("") : '<option value="">ยังไม่มีขนาดถุง</option>';
+        return '<div class="item-row" data-row="' + row.rowId + '">' +
+          '<div><label>ชนิดผัก</label><select class="row-veg">' + vegOpts + '</select></div>' +
+          '<div><label>ขนาด</label><select class="row-size">' + sizeOpts + '</select></div>' +
+          '<div><label>จำนวนถุง</label><input type="number" min="0" step="1" inputmode="numeric" class="row-qty" value="' + esc(row.qty) + '"></div>' +
+          '<div class="sub">' + subHtml(row) + '</div>' +
+          '<button type="button" class="remove-x" title="ลบรายการนี้">✕</button></div>';
+      }).join("");
+      wrap.querySelectorAll(".item-row").forEach(function(el){
+        var rid = Number(el.dataset.row);
+        var row = rows.filter(function(r){ return r.rowId === rid; })[0];
+        el.querySelector(".row-veg").addEventListener("change", function(e){
+          row.vegId = e.target.value;
+          var nv = vegById(row.vegId), ks = nv ? vegSizeKeys(nv) : [];
+          row.size = ks.length ? ks[0] : "";
+          renderRows();
+        });
+        el.querySelector(".row-size").addEventListener("change", function(e){ row.size = e.target.value; renderRows(); });
+        var qi = el.querySelector(".row-qty");
+        qi.addEventListener("input", function(e){ row.qty = e.target.value; el.querySelector(".sub").innerHTML = subHtml(row); totals(); });
+        qi.addEventListener("blur", function(){ var n = parseInt(row.qty,10); if(isNaN(n) || n < 0) n = 0; row.qty = String(n); renderRows(); });
+        el.querySelector(".remove-x").addEventListener("click", function(){
+          if(rows.length === 1) return;
+          rows = rows.filter(function(r){ return r.rowId !== rid; });
+          renderRows();
+        });
+      });
+      totals();
+    }
+    renderRows();
+
+    $("eo-add").addEventListener("click", function(){
+      itemRowSeq++;
+      var fv = vegetables.filter(function(v){ return !v.hidden; })[0];
+      var fk = fv ? vegSizeKeys(fv) : [];
+      rows.push({rowId: itemRowSeq, vegId: fv ? fv.id : "", size: fk.length ? fk[0] : "", qty: "1"});
+      renderRows();
+    });
+    $("eo-promo").addEventListener("change", totals);
+    $("eo-close").addEventListener("click", close);
+    $("eo-cancel").addEventListener("click", close);
+    b.addEventListener("click", function(e){ if(e.target === b) close(); });
+
+    $("eo-save").addEventListener("click", function(){
+      var res = computeTotals(rows, $("eo-promo").checked);
+      if(res.items.length === 0){ toast("กรุณาระบุจำนวนผักอย่างน้อย 1 รายการ"); return; }
+      var name = $("eo-name").value.trim();
+      o.customerName = name || "ลูกค้าไม่ระบุชื่อ";
+      o.phone = $("eo-phone").value.trim();
+      o.address = $("eo-address").value.trim();
+      o.items = res.items; o.total = res.total; o.discount = res.discount; o.promoApplied = $("eo-promo").checked;
+      saveOrders();
+      var shortage = [];
+      res.items.forEach(function(it){
+        var v = vegById(it.vegId); if(!v) return;
+        var sz = v.sizes[it.size];
+        if(sz && sz.stock !== null && typeof sz.stock !== "undefined"){
+          var info = computeStockInfo(v, it.size);
+          if(info.mode === "shortage") shortage.push(v.name + " " + it.size + " " + info.label);
+        }
+      });
+      close();
+      if(map) map.closePopup();
+      renderStockTable(); renderDashboard(); renderSummary(); renderDeliveryList(); renderMapMarkers(); renderCharts();
+      toast("บันทึกการแก้ไขออเดอร์เรียบร้อยแล้ว");
+      if(shortage.length > 0){ setTimeout(function(){ toast("⚠️ สต๊อคไม่พอ: " + shortage.join(" | ")); }, 2600); }
+    });
   };
 
   // ---------- save order (create or edit) ----------
@@ -2584,29 +2730,86 @@
     window.addEventListener("appinstalled", function(){ installBtn.style.display = "none"; deferredInstallPrompt = null; toast("ติดตั้งแอพเรียบร้อยแล้ว"); });
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
+  // ---------- auto-update check (installed apps stay open in memory for days) ----------
+  var APP_VERSION = "ui-14";
+  function checkForNewVersion(){
+    if(!/^https?:$/.test(location.protocol)) return;
+    fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
+      var m = /เวอร์ชันแอพ: (ui-\d+)/.exec(t || "");
+      if(!m || m[1] === APP_VERSION || document.getElementById("update-banner")) return;
+      var bar = document.createElement("div");
+      bar.id = "update-banner";
+      bar.style.cssText = "position:fixed; left:12px; right:12px; top:calc(10px + env(safe-area-inset-top, 0px)); z-index:11000; background:#C25A12; color:#fff; border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.3);";
+      bar.innerHTML = '<span style="flex:1;">✨ มีเวอร์ชันใหม่ (' + m[1] + ')</span><button type="button" style="border:none; background:#fff; color:#C25A12; font-weight:700; border-radius:10px; padding:8px 14px; font-family:inherit; font-size:14px;">อัปเดตเลย</button>';
+      bar.querySelector("button").addEventListener("click", function(){
+        var go = function(){ location.reload(); };
+        if("caches" in window){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(go, go); } else { go(); }
+      });
+      document.body.appendChild(bar);
+    }).catch(function(){});
+  }
+  window.addEventListener("load", function(){ setTimeout(checkForNewVersion, 2500); });
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState === "visible") checkForNewVersion(); });
+
   if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
     window.addEventListener("load", function(){ navigator.serviceWorker.register("./sw.js").catch(function(){}); });
   }
 
   // ---------- GPS tracking ----------
+  var gpsWanted = false, lastFixAt = 0, gpsWatchdog = null, wakeLock = null;
+  function gpsUI(on, text){
+    setSwitch(document.getElementById("btn-toggle-gps"), on);
+    document.getElementById("dm-gps-dot").classList.toggle("live", on);
+    if(text) document.getElementById("dm-gps-label").textContent = text;
+  }
+  function startGpsWatch(){
+    if(watchId !== null){ try{ navigator.geolocation.clearWatch(watchId); }catch(_){} watchId = null; }
+    watchId = navigator.geolocation.watchPosition(onGpsUpdate, onGpsError, {enableHighAccuracy:true, maximumAge:5000, timeout:30000});
+  }
+  function requestWakeLock(){
+    try{
+      if(navigator.wakeLock && !wakeLock){
+        navigator.wakeLock.request("screen").then(function(l){
+          wakeLock = l;
+          l.addEventListener("release", function(){ wakeLock = null; });
+        }).catch(function(){});
+      }
+    }catch(_){}
+  }
+  function releaseWakeLock(){ try{ if(wakeLock) wakeLock.release(); }catch(_){} wakeLock = null; }
+  function beginGps(){
+    gpsWanted = true; lastFixAt = Date.now();
+    startGpsWatch(); requestWakeLock();
+    // if no position arrives for a while, restart the watch (iOS can silently stall it)
+    gpsWatchdog = setInterval(function(){
+      if(gpsWanted && Date.now() - lastFixAt > 45000){ lastFixAt = Date.now(); startGpsWatch(); }
+    }, 15000);
+    gpsUI(true, "กำลังติดตามตำแหน่ง...");
+  }
+  function endGps(text){
+    gpsWanted = false;
+    if(watchId !== null){ try{ navigator.geolocation.clearWatch(watchId); }catch(_){} watchId = null; }
+    if(gpsWatchdog){ clearInterval(gpsWatchdog); gpsWatchdog = null; }
+    releaseWakeLock();
+    gpsUI(false, text || "GPS ปิดอยู่");
+  }
+  // coming back to the app (after screen lock / app switch): restart tracking automatically
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible" && gpsWanted){
+      lastFixAt = Date.now(); startGpsWatch(); requestWakeLock();
+    }
+  });
   document.getElementById("btn-toggle-gps").addEventListener("click", function(){
-    var btn = document.getElementById("btn-toggle-gps");
     if(!map){ toast("แผนที่ยังไม่พร้อมใช้งาน (โหลดไม่สำเร็จ)"); return; }
-    if(watchId === null){
+    if(!gpsWanted){
       if(!navigator.geolocation){ toast("อุปกรณ์นี้ไม่รองรับ GPS"); return; }
-      watchId = navigator.geolocation.watchPosition(onGpsUpdate, onGpsError, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
-      setSwitch(btn, true);
-      document.getElementById("dm-gps-dot").classList.add("live");
-      document.getElementById("dm-gps-label").textContent = "กำลังติดตามตำแหน่ง...";
+      beginGps();
     } else {
-      navigator.geolocation.clearWatch(watchId);
-      watchId = null;
-      setSwitch(btn, false);
-      document.getElementById("dm-gps-dot").classList.remove("live");
-      document.getElementById("dm-gps-label").textContent = "GPS ปิดอยู่";
+      endGps();
     }
   });
   function onGpsUpdate(pos){
+    lastFixAt = Date.now();
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     document.getElementById("dm-gps-label").textContent = "ตำแหน่งล่าสุด: " + lat.toFixed(5) + ", " + lng.toFixed(5);
     if(!carMarker){
@@ -2629,12 +2832,15 @@
       }
     });
   }
-  function onGpsError(){
-    toast("อ่านตำแหน่ง GPS ไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง");
-    if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
-    setSwitch(document.getElementById("btn-toggle-gps"), false);
-    document.getElementById("dm-gps-dot").classList.remove("live");
-    document.getElementById("dm-gps-label").textContent = "GPS ปิดอยู่";
+  function onGpsError(err){
+    if(err && err.code === 1){
+      // permission denied: the only error that really means "stop"
+      toast("อ่านตำแหน่ง GPS ไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง");
+      endGps();
+      return;
+    }
+    // timeout / signal temporarily unavailable: keep tracking, the watch keeps retrying
+    if(gpsWanted) document.getElementById("dm-gps-label").textContent = "กำลังหาสัญญาณ GPS...";
   }
 
   // ---------- summary page ----------
