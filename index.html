@@ -1125,7 +1125,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-22</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-23</p>
     </section>
 
   </main>
@@ -2159,6 +2159,13 @@
         '<div class="field"><label>ชื่อผู้สั่ง</label><input type="text" id="eo-name" autocomplete="off"></div>' +
         '<div class="field"><label>เบอร์โทร</label><input type="tel" id="eo-phone"></div>' +
         '<div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="eo-address" rows="2"></textarea></div>' +
+        '<div class="field"><label>พิกัด (lat, lng)</label><input type="text" id="eo-coords" placeholder="ยังไม่ระบุ" readonly></div>' +
+        '<div style="display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap;">' +
+          '<button type="button" class="btn btn-ghost btn-sm" id="eo-geocode">🔍 ค้นหาพิกัดจากที่อยู่</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm" id="eo-gps">📍 ใช้ตำแหน่งปัจจุบัน</button>' +
+        '</div>' +
+        '<p class="hint" style="margin:2px 0 0;">แตะแผนที่หรือลากหมุดเพื่อระบุ/แก้ตำแหน่งจัดส่ง</p>' +
+        '<div id="eo-map" style="width:100%; height:240px; border-radius:10px; margin-top:6px; z-index:1;"></div>' +
         '<h3 style="font-size:13.5px; margin:10px 0 8px;">🥬 รายการผัก</h3>' +
         '<div id="eo-rows"></div>' +
         (cancelledItems(o).length ? '<p class="hint" style="margin:2px 0 6px;">🚫 ยกเลิกไปแล้ว: ' + cancelledItems(o).map(function(it){ return esc(it.vegName) + ' ' + esc(it.size) + ' x' + it.qty; }).join(", ") + '</p>' : '') +
@@ -2182,7 +2189,48 @@
     $("eo-address").value = o.address || "";
     $("eo-promo").checked = !!o.promoApplied;
 
-    function close(){ b.remove(); }
+    // ----- แผนที่ระบุ/แก้ตำแหน่งจัดส่ง -----
+    var eoSel = (typeof o.lat === "number" && typeof o.lng === "number") ? {lat:o.lat, lng:o.lng} : null;
+    var eoMap = null, eoMarker = null;
+    function eoSet(lat, lng, zoom){
+      eoSel = {lat:lat, lng:lng};
+      $("eo-coords").value = lat.toFixed(6) + ", " + lng.toFixed(6);
+      if(eoMarker) eoMarker.setLatLng([lat,lng]);
+      if(eoMap) eoMap.setView([lat,lng], zoom || Math.max(eoMap.getZoom(), 15));
+    }
+    try{
+      var start = eoSel ? [eoSel.lat, eoSel.lng] : CENTER;
+      eoMap = L.map("eo-map", {zoomControl:false}).setView(start, eoSel ? 16 : 13);
+      L.control.zoom({position:"bottomright"}).addTo(eoMap);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution:"&copy; OpenStreetMap contributors", maxZoom:19}).addTo(eoMap);
+      eoMarker = L.marker(start, {draggable:true}).addTo(eoMap);
+      if(eoSel) $("eo-coords").value = eoSel.lat.toFixed(6) + ", " + eoSel.lng.toFixed(6);
+      eoMarker.on("dragend", function(){ var ll = eoMarker.getLatLng(); eoSet(ll.lat, ll.lng); });
+      eoMap.on("click", function(e){ eoSet(e.latlng.lat, e.latlng.lng); });
+      addMapSearchControl(eoMap, function(lat, lng, name){ eoSet(lat, lng); toast("พบตำแหน่งแล้ว: " + name); });
+      setTimeout(function(){ if(eoMap) eoMap.invalidateSize(); }, 120);
+    }catch(err){ $("eo-map").style.display = "none"; }
+    $("eo-geocode").addEventListener("click", function(){
+      var addr = $("eo-address").value.trim();
+      if(!addr){ toast("กรุณากรอกที่อยู่ก่อนค้นหา"); return; }
+      var btn = $("eo-geocode"); btn.disabled = true; btn.textContent = "กำลังค้นหา...";
+      fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(addr + ", Thailand"))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d && d.length > 0){ eoSet(parseFloat(d[0].lat), parseFloat(d[0].lon)); toast("พบตำแหน่งแล้ว — ลากหมุดปรับให้ตรงได้"); }
+          else toast("หาที่อยู่นี้ไม่พบ ลองลากหมุดในแผนที่แทน");
+        })
+        .catch(function(){ toast("ค้นหาไม่สำเร็จ กรุณาลากหมุดในแผนที่แทน"); })
+        .finally(function(){ btn.disabled = false; btn.textContent = "🔍 ค้นหาพิกัดจากที่อยู่"; });
+    });
+    $("eo-gps").addEventListener("click", function(){
+      if(!navigator.geolocation){ toast("อุปกรณ์นี้ไม่รองรับ GPS"); return; }
+      navigator.geolocation.getCurrentPosition(function(pos){
+        eoSet(pos.coords.latitude, pos.coords.longitude, 17); toast("ใช้ตำแหน่งปัจจุบันแล้ว");
+      }, function(){ toast("ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS"); });
+    });
+
+    function close(){ if(eoMap){ try{ eoMap.remove(); }catch(_){} eoMap = null; } b.remove(); }
     function totals(){
       var res = computeTotals(rows, $("eo-promo").checked);
       $("eo-subtotal").textContent = money(res.normalTotal);
@@ -2257,6 +2305,7 @@
       o.customerName = name || "ลูกค้าไม่ระบุชื่อ";
       o.phone = $("eo-phone").value.trim();
       o.address = $("eo-address").value.trim();
+      if(eoSel){ o.lat = eoSel.lat; o.lng = eoSel.lng; }
       o.items = res.items.concat(cancelledItems(o)); o.total = res.total; o.discount = res.discount; o.promoApplied = $("eo-promo").checked;
       saveOrders();
       var shortage = [];
@@ -2920,7 +2969,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-22";
+  var APP_VERSION = "ui-23";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
