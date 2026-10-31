@@ -503,6 +503,12 @@
   #dm-map-wrap.fullscreen #dm-map{height:100%; border-radius:10px;}
   #dm-picker-map{width:100%; height:220px; border-radius:10px; margin-top:6px; z-index:1;}
   #picker-map-wrap{position:relative;}
+  #eo-map-wrap{position:relative;}
+  #eo-map{width:100%; height:240px; border-radius:10px; margin-top:6px; z-index:1;}
+  #eo-map-wrap.fullscreen{position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000; background:var(--surface); border-radius:0;
+    padding:calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));}
+  #eo-map-wrap.fullscreen #eo-map{height:100%; margin-top:0;}
+  #eo-map-wrap.fullscreen .map-switch-wrap{top:calc(26px + env(safe-area-inset-top, 0px)); right:calc(26px + env(safe-area-inset-right, 0px));}
   #picker-map-wrap.fullscreen{
     position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000;
     background:var(--surface); padding:16px; border-radius:0;
@@ -1125,7 +1131,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-23</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-24</p>
     </section>
 
   </main>
@@ -2165,7 +2171,9 @@
           '<button type="button" class="btn btn-ghost btn-sm" id="eo-gps">📍 ใช้ตำแหน่งปัจจุบัน</button>' +
         '</div>' +
         '<p class="hint" style="margin:2px 0 0;">แตะแผนที่หรือลากหมุดเพื่อระบุ/แก้ตำแหน่งจัดส่ง</p>' +
-        '<div id="eo-map" style="width:100%; height:240px; border-radius:10px; margin-top:6px; z-index:1;"></div>' +
+        '<div id="eo-map-wrap"><div id="eo-map"></div>' +
+          '<div class="map-switch-wrap"><span class="map-switch-label">เต็มจอ</span><button type="button" class="dm-switch" id="sw-fs-eo" role="switch" aria-checked="false" aria-label="ขยายแผนที่เต็มจอ"><span class="knob"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span></button></div>' +
+        '</div>' +
         '<h3 style="font-size:13.5px; margin:10px 0 8px;">🥬 รายการผัก</h3>' +
         '<div id="eo-rows"></div>' +
         (cancelledItems(o).length ? '<p class="hint" style="margin:2px 0 6px;">🚫 ยกเลิกไปแล้ว: ' + cancelledItems(o).map(function(it){ return esc(it.vegName) + ' ' + esc(it.size) + ' x' + it.qty; }).join(", ") + '</p>' : '') +
@@ -2210,6 +2218,7 @@
       addMapSearchControl(eoMap, function(lat, lng, name){ eoSet(lat, lng); toast("พบตำแหน่งแล้ว: " + name); });
       setTimeout(function(){ if(eoMap) eoMap.invalidateSize(); }, 120);
     }catch(err){ $("eo-map").style.display = "none"; }
+    bindFullscreenSwitch("sw-fs-eo", "eo-map-wrap", function(){ return eoMap; });
     $("eo-geocode").addEventListener("click", function(){
       var addr = $("eo-address").value.trim();
       if(!addr){ toast("กรุณากรอกที่อยู่ก่อนค้นหา"); return; }
@@ -2230,7 +2239,7 @@
       }, function(){ toast("ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต GPS"); });
     });
 
-    function close(){ if(eoMap){ try{ eoMap.remove(); }catch(_){} eoMap = null; } b.remove(); }
+    function close(){ document.body.style.overflow = ""; if(eoMap){ try{ eoMap.remove(); }catch(_){} eoMap = null; } b.remove(); }
     function totals(){
       var res = computeTotals(rows, $("eo-promo").checked);
       $("eo-subtotal").textContent = money(res.normalTotal);
@@ -2969,7 +2978,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-23";
+  var APP_VERSION = "ui-24";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
