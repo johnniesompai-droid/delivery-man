@@ -503,6 +503,11 @@
   #dm-map-wrap.fullscreen #dm-map{height:100%; border-radius:10px;}
   #dm-picker-map{width:100%; height:220px; border-radius:10px; margin-top:6px; z-index:1;}
   #picker-map-wrap{position:relative;}
+  /* มือถือเท่านั้น: iOS จะซูมเข้าเองเมื่อแตะช่องกรอกที่ตัวอักษรเล็กกว่า 16px จึงตั้งให้เป็น 16px (ยังใช้นิ้วถ่างซูมเองได้ปกติ) */
+  @media (max-width: 600px){
+    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]),
+    textarea, select, .map-search-input{font-size:16px !important;}
+  }
   .cust-banner{padding:0; overflow:hidden;}
   .cust-banner-head{width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; border:none; background:linear-gradient(135deg,var(--green),#2F6B4A); color:#fff; cursor:pointer; text-align:left; font-family:'Prompt',sans-serif;}
   .cust-banner-head .cb-ic{font-size:24px;}
@@ -1181,7 +1186,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-25</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-26</p>
     </section>
 
   </main>
@@ -3029,7 +3034,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-25";
+  var APP_VERSION = "ui-26";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
