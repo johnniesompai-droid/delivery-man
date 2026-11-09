@@ -503,6 +503,41 @@
   #dm-map-wrap.fullscreen #dm-map{height:100%; border-radius:10px;}
   #dm-picker-map{width:100%; height:220px; border-radius:10px; margin-top:6px; z-index:1;}
   #picker-map-wrap{position:relative;}
+  .cust-banner{padding:0; overflow:hidden;}
+  .cust-banner-head{width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; border:none; background:linear-gradient(135deg,var(--green),#2F6B4A); color:#fff; cursor:pointer; text-align:left; font-family:'Prompt',sans-serif;}
+  .cust-banner-head .cb-ic{font-size:24px;}
+  .cust-banner-head .cb-tt{flex:1; display:flex; flex-direction:column; gap:2px; font-size:15px;}
+  .cust-banner-head small{font-size:12px; opacity:.85; font-weight:400;}
+  .cust-banner-head .cb-chev{font-size:18px; transition:transform .2s;}
+  .cust-banner-head[aria-expanded="true"] .cb-chev{transform:rotate(180deg);}
+  .cust-body{padding:12px 14px 14px;}
+  #cust-search{width:100%; box-sizing:border-box; margin-bottom:8px;}
+  .cust-sortrow{display:flex; gap:8px; margin-bottom:8px;}
+  .cust-sortrow .range-btn{padding:7px 14px; font-size:13px;}
+  #cust-list{max-height:min(520px, 60vh); overflow-y:auto; -webkit-overflow-scrolling:touch;}
+  .cust-row{display:flex; align-items:center; gap:10px; width:100%; padding:11px 4px; border:none; border-bottom:1px dashed var(--line); background:transparent; cursor:pointer; text-align:left; font-family:'Prompt',sans-serif; color:var(--ink);}
+  .cust-row:active{background:var(--surface-2);}
+  .cust-rank{flex:0 0 28px; height:28px; border-radius:50%; background:var(--surface-2); color:var(--ink-muted); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .cust-row:nth-child(-n+3) .cust-rank{background:var(--carrot-pale); color:#A64E15;}
+  .cust-who{flex:1; min-width:0;}
+  .cust-who .nm{font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cust-who .ph{font-size:12.5px; color:var(--ink-muted); margin-top:1px;}
+  .cust-stat{text-align:right; flex:0 0 auto;}
+  .cust-stat .a{font-size:14px; font-weight:700;}
+  .cust-stat .b{font-size:12px; color:var(--ink-muted);}
+  .cd-info{background:var(--surface-2); border-radius:10px; padding:10px 12px; font-size:13.5px; line-height:1.7; margin-bottom:10px;}
+  .cd-info .ph{font-size:13px;}
+  .cd-veg{margin-bottom:10px; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .cd-veg-h{display:flex; justify-content:space-between; padding:8px 12px; background:var(--surface-2); font-weight:700; font-size:14px;}
+  .cd-tbl, .cd-info, .cd-info a, .cd-tbl td, .cd-tbl th{font-family:inherit;}
+  .cd-info a{color:var(--green); font-weight:600;}
+  .cd-tbl{width:100%; border-collapse:collapse; font-size:13px;}
+  .cd-tbl th{font-weight:600; color:var(--ink-muted); text-align:right; padding:6px 10px; font-size:12px;}
+  .cd-tbl td{text-align:right; padding:6px 10px; border-top:1px dashed var(--line);}
+  .cd-tbl th:first-child, .cd-tbl td:first-child{text-align:left;}
+  .cd-sum{border-top:2px solid var(--line); padding-top:8px; font-size:14px;}
+  .cd-sum .row{display:flex; justify-content:space-between; padding:2px 0;}
+  .cd-sum .grand{font-weight:800; font-size:16px; color:var(--green);}
   #eo-map-wrap{position:relative;}
   #eo-map{width:100%; height:240px; border-radius:10px; margin-top:6px; z-index:1;}
   #eo-map-wrap.fullscreen{position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000; background:var(--surface); border-radius:0;
@@ -1110,7 +1145,22 @@
         <h2>ข้อมูล &amp; ซิงก์</h2>
         <p>สำรองข้อมูล นำเข้าข้อมูล และดูสถานะการซิงก์ข้ามเครื่อง</p>
       </div>
-      <div class="panel">
+      <div class="panel cust-banner" id="cust-panel">
+        <button type="button" class="cust-banner-head" id="cust-toggle" aria-expanded="false">
+          <span class="cb-ic">👥</span>
+          <span class="cb-tt"><strong>ข้อมูลลูกค้า</strong><small id="cust-sub">-</small></span>
+          <span class="cb-chev">▾</span>
+        </button>
+        <div class="cust-body" id="cust-body" style="display:none;">
+          <input type="text" id="cust-search" placeholder="ค้นหาชื่อหรือเบอร์โทร..." autocomplete="off">
+          <div class="cust-sortrow">
+            <button type="button" class="range-btn active" data-csort="freq">สั่งบ่อยที่สุด</button>
+            <button type="button" class="range-btn" data-csort="amt">ยอดสูงสุด</button>
+          </div>
+          <div id="cust-list"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px;">
         <h3 style="margin-top:0;">☁️ สถานะคลาวด์</h3>
         <div class="gps-chip" style="background:var(--surface-2); color:var(--ink); max-width:420px;"><span class="dot" id="dp-status-dot"></span> <span id="dp-status">-</span></div>
         <p class="hint" id="dp-account" style="margin-top:8px;"></p>
@@ -1131,7 +1181,7 @@
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none;">
       </div>
-    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-24</p>
+    <p class="hint" style="margin-top:14px; text-align:center;">เวอร์ชันแอพ: ui-25</p>
     </section>
 
   </main>
@@ -1425,6 +1475,7 @@
       if(btn.dataset.page === "delivery"){ setTimeout(function(){ updateScrollIndicators(); }, 60); }
       if(btn.dataset.page === "orders" && pickerMap){ setTimeout(function(){ pickerMap.invalidateSize(); }, 60); }
       if(btn.dataset.page === "summary"){ renderSummary(); }
+      if(btn.dataset.page === "data"){ renderCustomers(); }
       if(btn.dataset.page === "dashboard"){ renderCharts(); }
     });
   });
@@ -2978,7 +3029,7 @@
     installBtn.addEventListener("click", function(){ if(deferredInstallPrompt){ var p = deferredInstallPrompt; deferredInstallPrompt = null; p.prompt(); return; } showInstallHelp(); });
   }
   // ---------- auto-update check (installed apps stay open in memory for days) ----------
-  var APP_VERSION = "ui-24";
+  var APP_VERSION = "ui-25";
   function checkForNewVersion(){
     if(!/^https?:$/.test(location.protocol)) return;
     fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(t){
@@ -3184,6 +3235,134 @@
     });
   }
   // cancel ONE vegetable line of an order (the rest of the order stays); the order total is recalculated without it
+  // ---------- ข้อมูลลูกค้า (หน้าข้อมูล & ซิงก์) ----------
+  var custSort = "freq", custQuery = "";
+  function custKey(o){
+    var ph = String(o.phone || "").replace(/\D/g, "");
+    if(ph.length >= 6) return "p:" + ph;
+    return "n:" + String(o.customerName || "").trim().toLowerCase();
+  }
+  function buildCustomers(){
+    var map = {};
+    activeOrders().forEach(function(o){
+      var k = custKey(o);
+      var c = map[k] || (map[k] = {key:k, name:"", phone:"", address:"", lat:null, lng:null, orders:[], last:0});
+      c.orders.push(o);
+      if((o.createdAt || 0) >= c.last){
+        c.last = o.createdAt || 0;
+        c.name = o.customerName || c.name;
+      }
+    });
+    var list = Object.keys(map).map(function(k){
+      var c = map[k];
+      c.orders.sort(function(a, b){ return (b.createdAt || 0) - (a.createdAt || 0); });
+      c.orders.forEach(function(o){
+        if(!c.phone && o.phone) c.phone = o.phone;
+        if(!c.address && o.address) c.address = o.address;
+        if(c.lat == null && typeof o.lat === "number" && typeof o.lng === "number"){ c.lat = o.lat; c.lng = o.lng; }
+      });
+      c.count = c.orders.length;
+      c.total = c.orders.reduce(function(s, o){ return s + (Number(o.total) || 0); }, 0);
+      c.bags = 0;
+      c.orders.forEach(function(o){ liveItems(o).forEach(function(it){ c.bags += Number(it.qty) || 0; }); });
+      return c;
+    });
+    return list;
+  }
+  function sortCustomers(list){
+    list.sort(function(a, b){
+      if(custSort === "amt") return (b.total - a.total) || (b.count - a.count) || (b.last - a.last);
+      return (b.count - a.count) || (b.total - a.total) || (b.last - a.last);
+    });
+    return list;
+  }
+  function renderCustomers(){
+    var box = document.getElementById("cust-list"); if(!box) return;
+    var all = sortCustomers(buildCustomers());
+    document.getElementById("cust-sub").textContent = all.length + " ราย · แตะเพื่อดูรายชื่อ";
+    var q = custQuery.trim().toLowerCase();
+    var list = !q ? all : all.filter(function(c){ return c.name.toLowerCase().indexOf(q) >= 0 || String(c.phone).replace(/\D/g,"").indexOf(q.replace(/\D/g,"") || "\u0000") >= 0 || String(c.phone).toLowerCase().indexOf(q) >= 0; });
+    if(list.length === 0){ box.innerHTML = '<div class="empty-note">' + (all.length ? "ไม่พบลูกค้าที่ค้นหา" : "ยังไม่มีข้อมูลลูกค้า") + '</div>'; return; }
+    box.innerHTML = list.map(function(c, i){
+      var rank = all.indexOf(c) + 1;
+      return '<button type="button" class="cust-row" data-ck="' + esc(c.key) + '">' +
+        '<span class="cust-rank">' + rank + '</span>' +
+        '<span class="cust-who"><div class="nm">' + esc(c.name) + '</div>' + (c.phone ? '<div class="ph">📞 ' + esc(c.phone) + '</div>' : '') + '</span>' +
+        '<span class="cust-stat"><div class="a">' + c.count + ' ครั้ง</div><div class="b">' + c.bags + ' ถุง · ' + money(c.total) + '</div></span>' +
+      '</button>';
+    }).join("");
+    box.querySelectorAll(".cust-row").forEach(function(r){
+      r.addEventListener("click", function(){ showCustomerDetail(r.dataset.ck); });
+    });
+  }
+  function showCustomerDetail(key){
+    var c = buildCustomers().filter(function(x){ return x.key === key; })[0];
+    if(!c) return;
+    var old = document.getElementById("cust-detail-modal"); if(old) old.remove();
+    var vegs = {};
+    var pre = 0;
+    c.orders.forEach(function(o){
+      liveItems(o).forEach(function(it){
+        var vk = it.vegId || it.vegName;
+        var g = vegs[vk] || (vegs[vk] = {name:it.vegName, bags:0, amt:0, sizes:{}});
+        var q = Number(it.qty) || 0, sub = Number(it.subtotal);
+        if(!isFinite(sub)) sub = (Number(it.unitPrice) || 0) * q;
+        g.bags += q; g.amt += sub; pre += sub;
+        var sz = g.sizes[it.size] || (g.sizes[it.size] = {bags:0, amt:0});
+        sz.bags += q; sz.amt += sub;
+      });
+    });
+    var vlist = Object.keys(vegs).map(function(k){ return vegs[k]; }).sort(function(a, b){ return (b.bags - a.bags) || (b.amt - a.amt); });
+    var disc = Math.max(0, pre - c.total);
+    var vegHtml = vlist.map(function(g){
+      var rows = Object.keys(g.sizes).sort(function(x, y){ return (g.sizes[y].bags - g.sizes[x].bags) || (sizeWeight(x) - sizeWeight(y)); }).map(function(sk){
+        var z = g.sizes[sk], kg = Math.round(sizeWeight(sk) * z.bags * 100) / 100;
+        return '<tr><td>' + esc(sk) + '</td><td>' + z.bags + '</td><td>' + kg + ' กก.</td><td>' + money(z.amt) + '</td></tr>';
+      }).join("");
+      var totKg = Math.round(Object.keys(g.sizes).reduce(function(s, sk){ return s + sizeWeight(sk) * g.sizes[sk].bags; }, 0) * 100) / 100;
+      return '<div class="cd-veg"><div class="cd-veg-h"><span>' + esc(g.name) + '</span><span>' + g.bags + ' ถุง · ' + totKg + ' กก. · ' + money(g.amt) + '</span></div>' +
+        '<table class="cd-tbl"><thead><tr><th>ขนาดถุง</th><th>จำนวนถุง</th><th>น้ำหนักรวม</th><th>ราคา</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    }).join("");
+    var coord = (c.lat != null) ? ('<div>📍 พิกัด: ' + c.lat.toFixed(5) + ', ' + c.lng.toFixed(5) + ' · <a href="https://www.google.com/maps?q=' + c.lat + ',' + c.lng + '" target="_blank" rel="noopener">เปิดแผนที่</a></div>') : '<div>📍 พิกัด: <span style="color:var(--ink-muted);">ยังไม่ระบุ</span></div>';
+    var b = document.createElement("div");
+    b.className = "dm-modal-backdrop"; b.id = "cust-detail-modal";
+    b.innerHTML = '<div class="dm-modal">' +
+      '<div class="dm-modal-head"><strong>👤 ข้อมูลลูกค้า</strong><button type="button" class="dm-modal-x" id="cd-close">✕</button></div>' +
+      '<div class="cd-info"><div style="font-size:17px; font-weight:700;">' + esc(c.name) + '</div>' +
+        '<div class="ph">📞 ' + (c.phone ? '<a href="tel:' + esc(c.phone) + '">' + esc(c.phone) + '</a>' : '<span style="color:var(--ink-muted);">ไม่ระบุ</span>') + '</div>' +
+        '<div>🏠 ' + (c.address ? esc(c.address) : '<span style="color:var(--ink-muted);">ไม่ระบุที่อยู่</span>') + '</div>' + coord +
+        '<div style="color:var(--ink-muted); font-size:12.5px;">สั่งทั้งหมด ' + c.count + ' ครั้ง · ล่าสุด ' + fmtDateTime(c.last) + '</div></div>' +
+      '<h3 style="font-size:13.5px; margin:4px 0 8px;">🥬 สินค้าที่สั่ง (เรียงจากสั่งเยอะสุด)</h3>' +
+      (vegHtml || '<div class="empty-note">ไม่มีรายการ</div>') +
+      '<div class="cd-sum"><div class="row"><span>ราคาปกติรวม</span><span class="mono">' + money(pre) + '</span></div>' +
+        (disc > 0 ? '<div class="row" style="color:var(--carrot);"><span>ส่วนลดโปรโมชั่น</span><span class="mono">-' + money(disc) + '</span></div>' : '') +
+        '<div class="row grand"><span>ราคารวมทั้งหมด</span><span class="mono">' + money(c.total) + '</span></div></div>' +
+      '<div class="dm-modal-actions" style="margin-top:12px;"><button type="button" class="btn btn-ghost" id="cd-ok" style="flex:1;">ปิด</button></div>' +
+    '</div>';
+    document.body.appendChild(b);
+    function close(){ b.remove(); }
+    document.getElementById("cd-close").addEventListener("click", close);
+    document.getElementById("cd-ok").addEventListener("click", close);
+    b.addEventListener("click", function(e){ if(e.target === b) close(); });
+  }
+  (function(){
+    var tg = document.getElementById("cust-toggle");
+    tg.addEventListener("click", function(){
+      var open = tg.getAttribute("aria-expanded") !== "true";
+      tg.setAttribute("aria-expanded", open ? "true" : "false");
+      document.getElementById("cust-body").style.display = open ? "block" : "none";
+      if(open) renderCustomers();
+    });
+    document.getElementById("cust-search").addEventListener("input", function(e){ custQuery = e.target.value; renderCustomers(); });
+    document.querySelectorAll("[data-csort]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        custSort = btn.dataset.csort;
+        document.querySelectorAll("[data-csort]").forEach(function(x){ x.classList.toggle("active", x === btn); });
+        renderCustomers();
+      });
+    });
+  })();
+
   window.dmCancelItem = function(orderId, idx){
     var o = orders.filter(function(x){ return x.id === orderId; })[0];
     if(!o || !o.items[idx] || o.items[idx].cancelled) return;
